@@ -223,6 +223,9 @@
 <li>约束了泛型<code>T</code>只能是实现了<code>Display</code>这个trait的类型，方便后续直接使用<code>println!</code>输出</li>
 </ol>
 ]]></content>
+      <categories>
+        <category>编程/语言</category>
+      </categories>
       <tags>
         <tag>Rust</tag>
       </tags>
@@ -335,6 +338,9 @@
 <p>至于快了的那一点，本质上是因为迭代器在编译过程中会运行一次展开优化，例如本来要运行12次的循环代码，如果是迭代器的话，在编译之后会展开成重复执行12次的代码，减少了循环控制时候的开销。</p>
 <p>但个人觉得可以忽略不计，大可依照个人习惯的去选择使用这两种写法，benchmark本质上只是证明了iter并不会引入额外开销，放心使用。</p>
 ]]></content>
+      <categories>
+        <category>编程/语言</category>
+      </categories>
       <tags>
         <tag>Rust</tag>
       </tags>
@@ -503,6 +509,9 @@
 <p>所以Rust的二进制项目通常会把逻辑编写在src&#x2F;lib.rs里，main.rs只对lib.rs的内容进行简单的调用。</p>
 <h1 id="总结"><a href="#总结" class="headerlink" title="总结"></a>总结</h1><p>没什么好总结的，下一章写项目去了。</p>
 ]]></content>
+      <categories>
+        <category>编程/语言</category>
+      </categories>
       <tags>
         <tag>Rust</tag>
       </tags>
@@ -644,6 +653,9 @@
 <p>具体就没什么好演示的了，这是一个用来搜索文件的小工具。</p>
 <h1 id="使用自定义命令扩展Cargo的功能"><a href="#使用自定义命令扩展Cargo的功能" class="headerlink" title="使用自定义命令扩展Cargo的功能"></a>使用自定义命令扩展Cargo的功能</h1><p>cargo xxx可以运行xxx这个二进制文件，所以如果你用cargo install安装了某个扩展，也可以用cargo xxx来运行</p>
 ]]></content>
+      <categories>
+        <category>编程/语言</category>
+      </categories>
       <tags>
         <tag>Rust</tag>
       </tags>
@@ -873,6 +885,9 @@
 <li>一些乱七八糟的命令行处理等</li>
 </ol>
 ]]></content>
+      <categories>
+        <category>编程/语言</category>
+      </categories>
       <tags>
         <tag>Rust</tag>
       </tags>
@@ -971,6 +986,9 @@
 <p>第六章也就搞定了，大致总结一下，这章主要就是讲了一下1. 枚举类型对于结构体的优势所在，2. match对于if-else的优势所在，3. 独特的空值设计理念</p>
 <p>今天就到这里吧，后面还有7，8，9章三章的基础通用编程知识，学完就差不多进入进阶阶段了。</p>
 ]]></content>
+      <categories>
+        <category>编程/语言</category>
+      </categories>
       <tags>
         <tag>Rust</tag>
       </tags>
@@ -1089,6 +1107,9 @@
 </ol>
 <p>今天就到这！</p>
 ]]></content>
+      <categories>
+        <category>编程/语言</category>
+      </categories>
       <tags>
         <tag>Rust</tag>
       </tags>
@@ -1244,6 +1265,9 @@
 <p>结束！这一章里面主要就是学了动态数组&#x2F;字符串&#x2F;哈希映射三个集合结构，介绍了一下基本的使用，还有他们的所有权规则，为了满足这个所有权，很多结构的使用方式都变得有点麻烦了，放python里，基本都是一个索引就能解决的事，在这里要考虑一大堆所有权问题，肉眼可见的麻烦起来了。</p>
 <p>下一节学错误处理，学完就到trait和生命周期了，搞完这些个rust独有的概念，也就差不多可以上手使用了。</p>
 ]]></content>
+      <categories>
+        <category>编程/语言</category>
+      </categories>
       <tags>
         <tag>Rust</tag>
       </tags>
@@ -1362,6 +1386,9 @@
 </ol>
 <p>第10章开始就是 trait，泛型和生命周期了。</p>
 ]]></content>
+      <categories>
+        <category>编程/语言</category>
+      </categories>
       <tags>
         <tag>Rust</tag>
       </tags>
@@ -1427,6 +1454,9 @@
 <p>这么看来，cargo应该就是rust构建项目的核心工具了。</p>
 <p>到此为止，第一章结束。</p>
 ]]></content>
+      <categories>
+        <category>编程/语言</category>
+      </categories>
       <tags>
         <tag>Rust</tag>
       </tags>
@@ -1509,6 +1539,9 @@
 <hr>
 <p>本章到此结束！没什么好总结的，是比较基础的，也很重要的一部分，下一章继续干。</p>
 ]]></content>
+      <categories>
+        <category>编程/语言</category>
+      </categories>
       <tags>
         <tag>Rust</tag>
       </tags>
@@ -1568,6 +1601,9 @@
 <p>修改后的代码是这样的，我们用 <code>match</code> 来处理 <code>parse()</code> 的返回值，之前也说过，<code>Ok</code> 会附带执行成功的值，所以 <code>Ok(num)</code> 表示，用 <code>num</code> 来匹配 <code>Ok</code> 里面带的成功的返回值，<code>=&gt;</code> 表示返回 <code>num</code> 值；<code>Err(_)</code> 就是表示，用 <code>_</code> 来匹配错误信息，因为不需要用，所以用 <code>_</code> 就完了，然后执行错误处理，输出+继续输入；值得一提的是这里好像说明了 Rust 的函数返回机制，好像不需要写 <code>return</code>，直接一个变量名就是返回了。</p>
 <p>OK，到目前为止，初步的编程尝试已经结束了，看了下后面的章节介绍，应该会是更结构化的东西。</p>
 ]]></content>
+      <categories>
+        <category>编程/语言</category>
+      </categories>
       <tags>
         <tag>Rust</tag>
       </tags>
@@ -1648,6 +1684,9 @@
 <hr>
 <p>至此，第三章基本概念结束！这章里面，虽然基本知识很多，但也有不少Rust独特之处，挺惊喜的，可以看到很多地方有些和 python 的相似程度，在保证和 c++ 差不多效率的情况下，在一些语法简洁方面向python看齐（例如自动推导类型），处处都体现着，这确实是一个很现代化的语言。</p>
 ]]></content>
+      <categories>
+        <category>编程/语言</category>
+      </categories>
       <tags>
         <tag>Rust</tag>
       </tags>
@@ -1785,6 +1824,9 @@
 <hr>
 <p>好勒，第4章到这里就终于结束了，这一章实在太长了，毕竟涉及到核心概念，看了我半天时间，今天就差不多到这吧。</p>
 ]]></content>
+      <categories>
+        <category>编程/语言</category>
+      </categories>
       <tags>
         <tag>Rust</tag>
       </tags>
@@ -1877,6 +1919,9 @@
 
 <p>成功 build 后，我们就可以到 <code>build/html</code> 文件夹下，看到我们的HTML文件了，打开 index.html，就可以看到你的文档啦</p>
 ]]></content>
+      <categories>
+        <category>好软推荐</category>
+      </categories>
       <tags>
         <tag>好软推荐</tag>
       </tags>
