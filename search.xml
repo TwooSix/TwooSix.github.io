@@ -228,6 +228,118 @@
       </tags>
   </entry>
   <entry>
+    <title>【Rust 学习记录】13. 闭包与迭代器</title>
+    <url>/2024/01/18/%E3%80%90Rust-%E5%AD%A6%E4%B9%A0%E8%AE%B0%E5%BD%95%E3%80%9113-%E9%97%AD%E5%8C%85%E4%B8%8E%E8%BF%AD%E4%BB%A3%E5%99%A8/</url>
+    <content><![CDATA[<h1 id="闭包：能够捕获环境的匿名函数"><a href="#闭包：能够捕获环境的匿名函数" class="headerlink" title="闭包：能够捕获环境的匿名函数"></a>闭包：能够捕获环境的匿名函数</h1><p>如这个小节的标题所示，闭包其实就是一个匿名函数，可以接收变量，也可以返回值，主要是用来实现一些代码复用和自定义的行为。</p>
+<h2 id="概述"><a href="#概述" class="headerlink" title="概述"></a>概述</h2><p>首先，闭包的基本定义方法如下</p>
+<div class="highlight-container" data-rel="Rust"><figure class="iseeu highlight rust"><table><tr><td class="code"><pre><span class="line"><span class="keyword">fn</span> <span class="title function_">main</span>() &#123;</span><br><span class="line">    <span class="keyword">let</span> <span class="variable">a</span> = <span class="number">1</span>;</span><br><span class="line">    <span class="keyword">let</span> <span class="variable">b</span> = <span class="number">2</span>;</span><br><span class="line">    <span class="keyword">let</span> <span class="variable">c</span> = |a, b|&#123;a+b&#125;;</span><br><span class="line">    <span class="keyword">let</span> <span class="variable">d</span> = |a, b| a-b;</span><br><span class="line">    <span class="built_in">println!</span>(<span class="string">&quot;&#123;&#125;, &#123;&#125;&quot;</span>, <span class="title function_ invoke__">c</span>(a, b), <span class="title function_ invoke__">d</span>(a, b));</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
+
+<ol>
+<li>通过**||**包裹住传入的参数，通过逗号隔开</li>
+<li>花括号内定义函数的行为。当然，对于简短的函数，例如a+b这种一条表达式直接返回值的，也可以不用花括号，如d</li>
+</ol>
+<p>闭包与函数不同的是</p>
+<ol>
+<li><p>闭包内<strong>不强迫显示标注类型</strong>，因为考虑到闭包这种通常使用的场景就是一个狭窄的上下文内，进行一个暂时的函数定义，而不会被广泛的定义。So, rust的设计者认为这种场景下干脆默认直接交给编译器推理就行。所以，闭包也有编译期固定类型的特性，闭包第一次被调用的时候，就按照第一次传入的参数被固定了，那第二次调用的时候是无法使用其他类型的参数传入的。如下面的代码会报错：<code>error[E0308]: arguments to this function are incorrect</code></p>
+<div class="highlight-container" data-rel="Rust"><figure class="iseeu highlight rust"><table><tr><td class="code"><pre><span class="line"><span class="keyword">fn</span> <span class="title function_">main</span>() &#123;</span><br><span class="line">    <span class="keyword">let</span> <span class="variable">a</span> = <span class="number">1</span>;</span><br><span class="line">    <span class="keyword">let</span> <span class="variable">b</span> = <span class="number">2</span>;</span><br><span class="line">    <span class="keyword">let</span> <span class="variable">closure</span> = |a, b|&#123;a+b&#125;;</span><br><span class="line">    <span class="built_in">println!</span>(<span class="string">&quot;&#123;&#125;&quot;</span>, <span class="title function_ invoke__">closure</span>(a, b));</span><br><span class="line">    <span class="keyword">let</span> <span class="variable">c</span> = <span class="number">1.1</span>;</span><br><span class="line">    <span class="keyword">let</span> <span class="variable">d</span> = <span class="number">2.2</span>;</span><br><span class="line">    <span class="built_in">println!</span>(<span class="string">&quot;&#123;&#125;&quot;</span>, <span class="title function_ invoke__">closure</span>(c, d));</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
+
+<p>如果要实现复杂的闭包，用泛型等，自行指定类型也是没有问题的</p>
+</li>
+<li><p>闭包<strong>可以作为变量存储</strong>，这也就增加了更多代码复用的写法，例如作为变量存到结构体里，在结构体里按需调用之类的</p>
+</li>
+<li><p>闭包<strong>可以捕获环境上下文</strong>；这是一个与函数相比最大的不同点，这个就稍微展开来讲讲。</p>
+</li>
+</ol>
+<h2 id="使用闭包捕获上下文环境"><a href="#使用闭包捕获上下文环境" class="headerlink" title="使用闭包捕获上下文环境"></a>使用闭包捕获上下文环境</h2><p>首先，捕获上下文是什么意思？看代码就知道了：</p>
+<div class="highlight-container" data-rel="Rust"><figure class="iseeu highlight rust"><table><tr><td class="code"><pre><span class="line"><span class="keyword">fn</span> <span class="title function_">main</span>() &#123;</span><br><span class="line">    <span class="keyword">let</span> <span class="variable">a</span> = <span class="number">1</span>;</span><br><span class="line">    <span class="keyword">let</span> <span class="variable">closure</span> = |num| num==a;</span><br><span class="line">    <span class="built_in">println!</span>(<span class="string">&quot;&#123;&#125;&quot;</span>, <span class="title function_ invoke__">closure</span>(<span class="number">1</span>));</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
+
+<p>在代码里可以看到，我们的闭包在没有传入a的情况下，获取到了闭包外的值a来进行一系列的处理。而普通函数如果不对a进行显示的传入的话，是不可能获得a的值的，这就是所谓的捕获上下文的能力。</p>
+<p>那么问题来了，rust里的核心机制就是所有权，参数到了函数里，所有权也会转到函数中，那a在闭包内的所有权是怎么变化的呢？</p>
+<p>我们换个例子来讲，因为a是整型，是存储在栈里的变量，在传入传出的时候是无脑的复制一份所有权，所以不具有代表性，我们换成数组。</p>
+<div class="highlight-container" data-rel="Rust"><figure class="iseeu highlight rust"><table><tr><td class="code"><pre><span class="line"><span class="keyword">fn</span> <span class="title function_">main</span>() &#123;</span><br><span class="line">    <span class="keyword">let</span> <span class="variable">a</span> = <span class="built_in">vec!</span>[<span class="number">1</span>,<span class="number">2</span>,<span class="number">3</span>];</span><br><span class="line">    <span class="keyword">let</span> <span class="variable">closure</span> = |num| num ==a[<span class="number">0</span>];</span><br><span class="line">    <span class="built_in">println!</span>(<span class="string">&quot;&#123;&#125;&quot;</span>, <span class="title function_ invoke__">closure</span>(<span class="number">1</span>));</span><br><span class="line">    <span class="built_in">println!</span>(<span class="string">&quot;&#123;:?&#125;&quot;</span>, a);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
+
+<p>闭包里面包含了三个trait，分别是<strong>FnOnce</strong>, <strong>FnMut</strong>, <strong>Fn</strong>，而对于每一个闭包，至少实现了这三个trait中的一个。</p>
+<ol>
+<li><strong>FnOnce</strong>是在闭包定义时会调用的，而且也只会调用一次的trait，他会把捕获到的环境变量所有权转移到闭包环境内。</li>
+<li><strong>FnMut</strong>是可变的借用捕获的变量，不夺取所有权</li>
+<li><strong>Fn</strong>则是不可变的借用</li>
+</ol>
+<p>闭包会对变量实现哪个trait是自动的，主要取决于你在闭包内用变量来干了什么。例如我的数组例子里，是可以运行成功的，因为我只简单的使用了一下数组内的元素进行&#x3D;&#x3D;的比较，并没有设计数值修改，所以闭包自动选择了不可变借用的形式。如以下形式，就是可变借用：</p>
+<div class="highlight-container" data-rel="Rust"><figure class="iseeu highlight rust"><table><tr><td class="code"><pre><span class="line"><span class="keyword">fn</span> <span class="title function_">main</span>() &#123;</span><br><span class="line">    <span class="keyword">let</span> <span class="keyword">mut </span><span class="variable">a</span> = <span class="built_in">vec!</span>[<span class="number">1</span>, <span class="number">2</span>, <span class="number">3</span>]; <span class="comment">// 注意a要改成可变</span></span><br><span class="line">    <span class="keyword">let</span> <span class="variable">closure</span> = |tmp| &#123;</span><br><span class="line">        a = tmp;</span><br><span class="line">        a</span><br><span class="line">    &#125;;</span><br><span class="line">    <span class="keyword">let</span> <span class="variable">b</span> = <span class="built_in">vec!</span>[<span class="number">3</span>, <span class="number">4</span>, <span class="number">5</span>];</span><br><span class="line">    <span class="built_in">println!</span>(<span class="string">&quot;&#123;:?&#125;&quot;</span>, <span class="title function_ invoke__">closure</span>(b));</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
+
+<p>如果你希望夺取所有权的话，有一个关键词<strong>move</strong>可以实现这么一个功能。</p>
+<div class="highlight-container" data-rel="Rust"><figure class="iseeu highlight rust"><table><tr><td class="code"><pre><span class="line"><span class="keyword">fn</span> <span class="title function_">main</span>() &#123;</span><br><span class="line">    <span class="keyword">let</span> <span class="variable">a</span> = <span class="built_in">vec!</span>[<span class="number">1</span>, <span class="number">2</span>, <span class="number">3</span>];</span><br><span class="line">    <span class="keyword">let</span> <span class="variable">closure</span> = <span class="keyword">move</span> |num| num == a[<span class="number">0</span>];</span><br><span class="line">    <span class="built_in">println!</span>(<span class="string">&quot;&#123;&#125;&quot;</span>, <span class="title function_ invoke__">closure</span>(<span class="number">1</span>));</span><br><span class="line">    <span class="built_in">println!</span>(<span class="string">&quot;&#123;:?&#125;&quot;</span>, a);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
+
+<p>定义为move后因为a的所有权被移到了闭包内，因此代码报错，无法运行。</p>
+<p>除了自动实现的以外，你也可以采用之前讲的trait相关内容，为闭包指定trait类型，也可以重载实现trait以自定义更多的行为，这里就不多做讲解了。</p>
+<h1 id="迭代器：处理元素序列"><a href="#迭代器：处理元素序列" class="headerlink" title="迭代器：处理元素序列"></a>迭代器：处理元素序列</h1><p>迭代器也并不是一个新概念了，简单来说，迭代器主要就是用来遍历序列的，主要是解决传统遍历方式需要程序员自己判断序列是什么时候结束的问题，用迭代器就可以省去每次遍历都要定义一个&#x3D;0的量，获取一次序列大小的逻辑。</p>
+<p>迭代器的本质是一个<code>Iterator</code>的trait，如下：</p>
+<div class="highlight-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="code"><pre><span class="line">pub trait Iterator &#123;</span><br><span class="line">    type Item;</span><br><span class="line"></span><br><span class="line">    fn next(&amp;mut self) -&gt; Option&lt;Self::Item&gt;;</span><br><span class="line"></span><br><span class="line">    // 这里省略了由Rust给出的默认实现方法</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
+
+<p>所以迭代器本质上就是不断的调用next方法，生成下一个元素的值，包装成Option然后返回。</p>
+<p>迭代器的生成是lazy的，和python的yield一样，只有当你遍历到那个元素的时候，迭代器才会使用next生成一个元素，然后返回到外面提供用户使用，在没有使用到的时候什么也不会发生，这在一定程度上节约了内存的使用。</p>
+<p>上面的代码有一些新的语法，<code>type Item</code>，<code>Self::Item</code>等，这个Item的功能是用来指定一个数据类型，后面会讲。</p>
+<h2 id="创建一个迭代器"><a href="#创建一个迭代器" class="headerlink" title="创建一个迭代器"></a>创建一个迭代器</h2><h3 id="iter"><a href="#iter" class="headerlink" title=".iter()"></a>.iter()</h3><p>创建一个迭代器有很多方法，最基础的就是.iter()</p>
+<div class="highlight-container" data-rel="Rust"><figure class="iseeu highlight rust"><table><tr><td class="code"><pre><span class="line"><span class="keyword">fn</span> <span class="title function_">main</span>() &#123;</span><br><span class="line">    <span class="keyword">let</span> <span class="variable">a</span> = <span class="built_in">vec!</span>[<span class="number">1</span>, <span class="number">2</span>, <span class="number">3</span>];</span><br><span class="line">    <span class="keyword">let</span> <span class="variable">a_iter</span> = a.<span class="title function_ invoke__">iter</span>();</span><br><span class="line">    <span class="keyword">for</span> <span class="variable">i</span> <span class="keyword">in</span> a_iter &#123;</span><br><span class="line">        <span class="built_in">println!</span>(<span class="string">&quot;&#123;&#125;&quot;</span>, i);</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
+
+<p>以上代码就是一个最简单的，使用<code>.iter()</code>创建一个列表的迭代器来遍历列表的示例。</p>
+<p>当然，既然说过迭代器的本质是不断调用next方法，所以我们也可以使用next方法来使用迭代器。</p>
+<div class="highlight-container" data-rel="Rust"><figure class="iseeu highlight rust"><table><tr><td class="code"><pre><span class="line"><span class="keyword">fn</span> <span class="title function_">main</span>() &#123;</span><br><span class="line">    <span class="keyword">let</span> <span class="variable">a</span> = <span class="built_in">vec!</span>[<span class="number">1</span>, <span class="number">2</span>, <span class="number">3</span>];</span><br><span class="line">    <span class="keyword">let</span> <span class="keyword">mut </span><span class="variable">a_iter</span> = a.<span class="title function_ invoke__">iter</span>();</span><br><span class="line">    <span class="built_in">assert_eq!</span>(a_iter.<span class="title function_ invoke__">next</span>(), <span class="title function_ invoke__">Some</span>(&amp;<span class="number">1</span>));</span><br><span class="line">    <span class="built_in">assert_eq!</span>(a_iter.<span class="title function_ invoke__">next</span>(), <span class="title function_ invoke__">Some</span>(&amp;<span class="number">2</span>));</span><br><span class="line">    <span class="built_in">assert_eq!</span>(a_iter.<span class="title function_ invoke__">next</span>(), <span class="title function_ invoke__">Some</span>(&amp;<span class="number">3</span>));</span><br><span class="line">    <span class="built_in">assert_eq!</span>(a_iter.<span class="title function_ invoke__">next</span>(), <span class="literal">None</span>);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
+
+<p>这里需要注意的是，<strong>a_iter必须定义为可变</strong>，因为调用next是会不断的吃掉上一个变量，替换成下一个变量的迭代器。</p>
+<h3 id=""><a href="#" class="headerlink" title=""></a></h3><h2 id="使用迭代器"><a href="#使用迭代器" class="headerlink" title="使用迭代器"></a>使用迭代器</h2><p>因为next方法是会不断“吃掉”上一个元素的，因此迭代器的使用也伴随着迭代器的消耗。基本的for循环就是使用迭代器的一个方法。</p>
+<div class="highlight-container" data-rel="Rust"><figure class="iseeu highlight rust"><table><tr><td class="code"><pre><span class="line"><span class="keyword">fn</span> <span class="title function_">main</span>() &#123;</span><br><span class="line">    <span class="keyword">let</span> <span class="variable">a</span> = <span class="built_in">vec!</span>[<span class="number">1</span>, <span class="number">2</span>, <span class="number">3</span>];</span><br><span class="line">    <span class="keyword">let</span> <span class="variable">a_iter</span> = a.<span class="title function_ invoke__">iter</span>();</span><br><span class="line">    <span class="keyword">for</span> <span class="variable">i</span> <span class="keyword">in</span> a_iter &#123;</span><br><span class="line">        <span class="built_in">println!</span>(<span class="string">&quot;&#123;&#125;&quot;</span>, i);</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">for</span> <span class="variable">i</span> <span class="keyword">in</span> a_iter &#123;</span><br><span class="line">        <span class="built_in">println!</span>(<span class="string">&quot;&#123;&#125;&quot;</span>, i);</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
+
+<p>这段代码运行将会报错，可以看到，a_iter在被第一个for循环使用完之后，就无法继续使用了。</p>
+<p>除了基本的循环外，还有很多提供便捷功能的迭代器相关方法，它们也同样会消耗迭代器。</p>
+<ol>
+<li><p><code>sum</code>方法会自动生成所有迭代器，并返回其中所有元素的和。</p>
+<div class="highlight-container" data-rel="Rust"><figure class="iseeu highlight rust"><table><tr><td class="code"><pre><span class="line"><span class="keyword">fn</span> <span class="title function_">main</span>() &#123;</span><br><span class="line">    <span class="keyword">let</span> <span class="variable">a</span> = <span class="built_in">vec!</span>[<span class="number">1</span>, <span class="number">2</span>, <span class="number">3</span>];</span><br><span class="line">    <span class="keyword">let</span> <span class="variable">a_iter</span> = a.<span class="title function_ invoke__">iter</span>();</span><br><span class="line">    <span class="keyword">let</span> <span class="variable">total</span>: <span class="type">i32</span> = a_iter.<span class="title function_ invoke__">sum</span>();</span><br><span class="line">    <span class="built_in">println!</span>(<span class="string">&quot;&#123;&#125;&quot;</span>, total);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
+
+<p>需要注意的是，这里必须把a_iter.sum()的结果存储到变量中打印，并显示标注total的类型，但这是后面再讲的问题了</p>
+</li>
+<li><p><code>collect</code>方法可以自动收集所有迭代器生成的元素，返回一个列表。</p>
+</li>
+</ol>
+<p>除了消耗迭代器返回元素的方法外，还有一种方法可以消耗旧的迭代器，生成新的符合一定要求的迭代器。这种方法成为<strong>迭代器适配器</strong></p>
+<ol>
+<li><p><code>map</code>方法可以接收一个闭包作为参数，自定义一个新的迭代器出来。</p>
+<div class="highlight-container" data-rel="Rust"><figure class="iseeu highlight rust"><table><tr><td class="code"><pre><span class="line"><span class="keyword">fn</span> <span class="title function_">main</span>() &#123;</span><br><span class="line">    <span class="keyword">let</span> <span class="variable">a</span> = <span class="built_in">vec!</span>[<span class="number">1</span>, <span class="number">2</span>, <span class="number">3</span>];</span><br><span class="line">    <span class="keyword">let</span> <span class="variable">a_iter</span> = a.<span class="title function_ invoke__">iter</span>();</span><br><span class="line">    <span class="keyword">let</span> <span class="variable">a2_iter</span> = a_iter.<span class="title function_ invoke__">map</span>(|x| x * <span class="number">2</span>);</span><br><span class="line">    <span class="keyword">let</span> <span class="variable">b</span>: <span class="type">Vec</span>&lt;<span class="type">i32</span>&gt; = a2_iter.<span class="title function_ invoke__">collect</span>();</span><br><span class="line">    <span class="built_in">println!</span>(<span class="string">&quot;&#123;:?&#125;&quot;</span>, b);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
+
+<p>这个示例中，我们使用map方法，生成一个会把原来元素*2再返回的迭代器，再使用collect方法收集成新的列表并打印输出</p>
+</li>
+<li><p><code>filter</code>方法同样也是接收闭包为参数，但这个闭包必须是返回一个<strong>bool</strong>值，利用闭包的bool结果，filter方法会过滤掉返回结果不为true的迭代器。</p>
+<div class="highlight-container" data-rel="Rust"><figure class="iseeu highlight rust"><table><tr><td class="code"><pre><span class="line"><span class="keyword">fn</span> <span class="title function_">main</span>() &#123;</span><br><span class="line">    <span class="keyword">let</span> <span class="variable">a</span> = <span class="built_in">vec!</span>[<span class="number">1</span>, <span class="number">2</span>, <span class="number">3</span>, <span class="number">4</span>];</span><br><span class="line">    <span class="keyword">let</span> <span class="variable">a_iter</span> = a.<span class="title function_ invoke__">into_iter</span>();</span><br><span class="line">    <span class="keyword">let</span> <span class="variable">a2_iter</span> = a_iter.<span class="title function_ invoke__">filter</span>(|x| x % <span class="number">2</span> == <span class="number">0</span>);</span><br><span class="line">    <span class="keyword">let</span> <span class="variable">b</span>: <span class="type">Vec</span>&lt;<span class="type">i32</span>&gt; = a2_iter.<span class="title function_ invoke__">collect</span>();</span><br><span class="line">    <span class="built_in">println!</span>(<span class="string">&quot;&#123;:?&#125;&quot;</span>, b);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
+
+<p>这里使用的是into_iter，因为a.iter()返回的是一个<strong>引用</strong>，所以在执行%运算的时候会报类型不匹配的错误；要么解引用，要么用into_iter直接夺取所有权，这里我偷了个懒。（PS：上面的乘法能编译通过是因为乘法这种基本运算会自动解引用。）</p>
+<p>当然，既然filter和map的传入参数是闭包，自然也可以捕获环境上下文，感兴趣可以自己试试，这里就不多写演示代码了。</p>
+</li>
+</ol>
+<p>还有很多方法，例如zip()，skip()，这里就没办法一一展开了</p>
+<h2 id="自定义迭代器"><a href="#自定义迭代器" class="headerlink" title="自定义迭代器"></a>自定义迭代器</h2><p>迭代器本质上是一个Iterator trait，所以我们自然也可以定义一个结构体，为他实现一个Iterator trait，进而实现一个我们自定义的迭代器。</p>
+<div class="highlight-container" data-rel="Rust"><figure class="iseeu highlight rust"><table><tr><td class="code"><pre><span class="line"><span class="keyword">struct</span> <span class="title class_">Counter</span> &#123;</span><br><span class="line">    count: <span class="type">u32</span>,</span><br><span class="line">&#125;</span><br><span class="line"><span class="keyword">impl</span> <span class="title class_">Counter</span> &#123;</span><br><span class="line">    <span class="keyword">fn</span> <span class="title function_">new</span>() <span class="punctuation">-&gt;</span> Counter &#123;</span><br><span class="line">        Counter &#123; count: <span class="number">0</span> &#125;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br><span class="line"><span class="keyword">impl</span> <span class="title class_">Iterator</span> <span class="keyword">for</span> <span class="title class_">Counter</span> &#123;</span><br><span class="line">    <span class="keyword">type</span> <span class="title class_">Item</span> = <span class="type">u32</span>;</span><br><span class="line">    <span class="keyword">fn</span> <span class="title function_">next</span>(&amp;<span class="keyword">mut</span> <span class="keyword">self</span>) <span class="punctuation">-&gt;</span> <span class="type">Option</span>&lt;<span class="keyword">Self</span>::Item&gt; &#123;</span><br><span class="line">        <span class="keyword">self</span>.count += <span class="number">1</span>;</span><br><span class="line">        <span class="keyword">if</span> <span class="keyword">self</span>.count &lt; <span class="number">6</span> &#123;</span><br><span class="line">            <span class="title function_ invoke__">Some</span>(<span class="keyword">self</span>.count)</span><br><span class="line">        &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">            <span class="literal">None</span></span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br><span class="line"><span class="keyword">fn</span> <span class="title function_">main</span>() &#123;</span><br><span class="line">    <span class="keyword">let</span> <span class="variable">counter</span> = Counter::<span class="title function_ invoke__">new</span>();</span><br><span class="line">    <span class="keyword">for</span> <span class="variable">i</span> <span class="keyword">in</span> counter &#123;</span><br><span class="line">        <span class="built_in">println!</span>(<span class="string">&quot;&#123;&#125;&quot;</span>, i);</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
+
+<p>这段示例里，我们就定义了一个结构体<strong>Counter</strong>，内置一个u32变量<strong>count</strong>，初始值为0，然后为Counter实现了一个Iterator trait，让Counter结构体变成了一个迭代器，迭代的逻辑就是不断的递增结构体内的count变量，直到count&gt;&#x3D;6。</p>
+<h2 id="迭代器的性能分析"><a href="#迭代器的性能分析" class="headerlink" title="迭代器的性能分析"></a>迭代器的性能分析</h2><p>例如说我们现在有一个功能，需要在一堆字符串中，找到所有包含某个子串的字符串。那最简单的，利用循环的写法可以写成如下形式：</p>
+<div class="highlight-container" data-rel="Rust"><figure class="iseeu highlight rust"><table><tr><td class="code"><pre><span class="line"><span class="keyword">fn</span> <span class="title function_">search</span>&lt;<span class="symbol">&#x27;a</span>&gt;(query: &amp;<span class="type">str</span>, contents: &amp;<span class="symbol">&#x27;a</span> <span class="type">str</span>) <span class="punctuation">-&gt;</span> <span class="type">Vec</span>&lt;&amp;<span class="symbol">&#x27;a</span> <span class="type">str</span>&gt; &#123;</span><br><span class="line">    <span class="keyword">let</span> <span class="keyword">mut </span><span class="variable">results</span> = <span class="type">Vec</span>::<span class="title function_ invoke__">new</span>();</span><br><span class="line">    <span class="keyword">for</span> <span class="variable">line</span> <span class="keyword">in</span> contents.<span class="title function_ invoke__">lines</span>() &#123;</span><br><span class="line">        <span class="keyword">if</span> line.<span class="title function_ invoke__">contains</span>(query) &#123;</span><br><span class="line">            results.<span class="title function_ invoke__">push</span>(line);</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">    results</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
+
+<p>那在知道迭代器之后，我们自然也可以想到可以通过迭代器的filter方法，过滤出只包含这个子串的迭代器，迭代器的版本可以这么写：</p>
+<div class="highlight-container" data-rel="Rust"><figure class="iseeu highlight rust"><table><tr><td class="code"><pre><span class="line"><span class="keyword">pub</span> <span class="keyword">fn</span> <span class="title function_">search</span>&lt;<span class="symbol">&#x27;a</span>&gt;(query: &amp;<span class="type">str</span>, contents: &amp;<span class="symbol">&#x27;a</span> <span class="type">str</span>) <span class="punctuation">-&gt;</span> <span class="type">Vec</span>&lt;&amp;<span class="symbol">&#x27;a</span> <span class="type">str</span>&gt; &#123;</span><br><span class="line">    contents.<span class="title function_ invoke__">lines</span>()</span><br><span class="line">        .<span class="title function_ invoke__">filter</span>(|line| line.<span class="title function_ invoke__">contains</span>(query))</span><br><span class="line">        .<span class="title function_ invoke__">collect</span>()</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
+
+<p>那这两种写法有什么区别呢，多抽象一层迭代器的话，会不会有性能损失？</p>
+<p>答案是不会的。</p>
+<p>Rust官方书籍里用一本小说做了一次bench mark，结果表面，迭代器的写法在经过优化后比for循环更快。</p>
+<div class="highlight-container" data-rel="Bash"><figure class="iseeu highlight bash"><table><tr><td class="code"><pre><span class="line"><span class="built_in">test</span> bench_search_for  ... bench:  19,620,300 ns/iter (+/- 915,700)</span><br><span class="line"><span class="built_in">test</span> bench_search_iter ... bench:  19,234,900 ns/iter (+/- 657,200)</span><br></pre></td></tr></table></figure></div>
+
+<p>迭代器是Rust里的一种零开销抽象，所以我们在使用的时候根本不需要担心会不会引入额外的运行成本。</p>
+<p>至于快了的那一点，本质上是因为迭代器在编译过程中会运行一次展开优化，例如本来要运行12次的循环代码，如果是迭代器的话，在编译之后会展开成重复执行12次的代码，减少了循环控制时候的开销。</p>
+<p>但个人觉得可以忽略不计，大可依照个人习惯的去选择使用这两种写法，benchmark本质上只是证明了iter并不会引入额外开销，放心使用。</p>
+]]></content>
+      <tags>
+        <tag>Rust</tag>
+      </tags>
+  </entry>
+  <entry>
     <title>【Rust 学习记录】11. 编写自动化测试</title>
     <url>/2023/05/09/%E3%80%90Rust-%E5%AD%A6%E4%B9%A0%E8%AE%B0%E5%BD%95%E3%80%9111-%E7%BC%96%E5%86%99%E8%87%AA%E5%8A%A8%E5%8C%96%E6%B5%8B%E8%AF%95/</url>
     <content><![CDATA[<blockquote>
@@ -766,88 +878,6 @@
       </tags>
   </entry>
   <entry>
-    <title>【Rust 学习记录】5. 结构体</title>
-    <url>/2023/03/30/%E3%80%90Rust-%E5%AD%A6%E4%B9%A0%E8%AE%B0%E5%BD%95%E3%80%915-%E7%BB%93%E6%9E%84%E4%BD%93/</url>
-    <content><![CDATA[<h1 id="定义及实例化方式"><a href="#定义及实例化方式" class="headerlink" title="定义及实例化方式"></a>定义及实例化方式</h1><h2 id="定义和创建实例"><a href="#定义和创建实例" class="headerlink" title="定义和创建实例"></a>定义和创建实例</h2><p>定义方法和 C++ 是一模一样了，详见代码</p>
-<div class="highlight-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="code"><pre><span class="line">struct User&#123;</span><br><span class="line">  username: String,</span><br><span class="line">  email: String,</span><br><span class="line">  sign_in_count: u64,</span><br><span class="line">  active: bool,</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
-
-<p>实例化方法稍显不同，方法和定义差不多，指名道姓的赋值，优势是不用对应顺序，可读性强。访问方法就还是传统的点运算符</p>
-<div class="highlight-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="code"><pre><span class="line">struct User&#123;</span><br><span class="line">  username: String,</span><br><span class="line">  email: String,</span><br><span class="line">  sign_in_count: u64,</span><br><span class="line">  active: bool,</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">fn main() &#123;</span><br><span class="line">    let user1 = User&#123;</span><br><span class="line">       email: String::from(&quot;test@1.com&quot;),</span><br><span class="line">       username: String::from(&quot;haha&quot;),</span><br><span class="line">       sign_in_count: 1,</span><br><span class="line">       active: true,</span><br><span class="line">    &#125;;</span><br><span class="line">    println!(&quot;user1: &#123;&#125;&quot;, user1.email);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
-
-<p>同理，结构体也有可变与不可变一说，<strong>可变结构体，结构体所有变量可变，不可变结构体，结构体所有变量不可变，Rust 没有让结构体部分变量可变，部分不可变的说法</strong></p>
-<h2 id="一些语法糖"><a href="#一些语法糖" class="headerlink" title="一些语法糖"></a>一些语法糖</h2><h3 id="同名参数对应赋值"><a href="#同名参数对应赋值" class="headerlink" title="同名参数对应赋值"></a>同名参数对应赋值</h3><p>如果每次都要写一个 email: xxxx， username: xxxx 好像有点麻烦是吗？Rust 提供了一个简单的方法，<strong>当变量名和结构体内的字段名完全一样的时候，会对应赋值</strong>（有一说一，这个设计挺有想法的，语法糖+1）</p>
-<p>所以我们可以很轻松的给 User 写一个创建用的函数，这样就可以实现带默认值，轻松的构建结构体实例了</p>
-<div class="highlight-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="code"><pre><span class="line">struct User&#123;</span><br><span class="line">  username: String,</span><br><span class="line">  email: String,</span><br><span class="line">  sign_in_count: u64,</span><br><span class="line">  active: bool,</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">fn create_user(email: String, username: String) -&gt; User &#123;</span><br><span class="line">  User &#123;</span><br><span class="line">    email,</span><br><span class="line">    username,</span><br><span class="line">    active: true,</span><br><span class="line">    sign_in_count: 1,</span><br><span class="line">  &#125;</span><br><span class="line">  // 不写分号返回 User 变量</span><br><span class="line">&#125;</span><br><span class="line">fn main() &#123;</span><br><span class="line">    let user1 = create_user(String::from(&quot;hah@haha.com&quot;), String::from(&quot;haha&quot;));</span><br><span class="line">    println!(&quot;user1: &#123;&#125;&quot;, user1.email);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
-
-<h3 id="用之前的实例构造现在的实例"><a href="#用之前的实例构造现在的实例" class="headerlink" title="用之前的实例构造现在的实例"></a>用之前的实例构造现在的实例</h3><p>在一些情况下其实结构体内的实例都不需要怎么变动，就像上面的例子里，<code>sign_in_count</code> 和 <code>active</code> 参数都是采用同一个默认值来赋给所有实例的，那有没有一些方法能简化这种情况的代码书写呢？有的。</p>
-<div class="highlight-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="code"><pre><span class="line">fn main() &#123;</span><br><span class="line">    let user1 = create_user(String::from(&quot;hah@haha.com&quot;), String::from(&quot;haha&quot;));</span><br><span class="line">    let user2 = User &#123;</span><br><span class="line">        email: String::from(&quot;user2@haha.com&quot;),</span><br><span class="line">        username: String::from(&quot;user2&quot;),</span><br><span class="line">        ..user1</span><br><span class="line">    &#125;;</span><br><span class="line">    println!(&quot;user2: &#123;&#125;&quot;, user2.active);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
-
-<p><code>..user1</code> 就代表了剩下的值都和 <code>user1</code> 一样，把 <code>user1</code> 里对应字段的值赋给 <code>user2</code> 即可。（这个感觉不如函数封装性好吧，但可能也看情况）</p>
-<h2 id="元组结构体——没有字段名的结构体"><a href="#元组结构体——没有字段名的结构体" class="headerlink" title="元组结构体——没有字段名的结构体"></a>元组结构体——没有字段名的结构体</h2><p>其实就相当于给元组命个名字，适用于很多不需要给字段命名的情况下，例如颜色的RGB，大家都懂是吧，就用一个三元组命名 <code>Color</code> 就好了。定义方式如下</p>
-<div class="highlight-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="code"><pre><span class="line">struct Color(i8, i8, i8);</span><br><span class="line"></span><br><span class="line">fn main() &#123;</span><br><span class="line">    let black = Color(0, 0, 0);</span><br><span class="line">    println!(&quot;user2: &#123;&#125;&quot;, black.0);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
-
-<p>值得一提的是，定义成结构体后也是用点运算符访问变量，而不是 [] 运算符了</p>
-<h2 id="空结构体——没有字段的结构体"><a href="#空结构体——没有字段的结构体" class="headerlink" title="空结构体——没有字段的结构体"></a>空结构体——没有字段的结构体</h2><p>当你想创建一个空结构体的时候，也是不会报错的，原理说是和空元组相似，然后在某些方面会有用，后续再介绍。</p>
-<p>我也不太懂，就不多说了，后面再看吧。</p>
-<h1 id="结构体的所有权"><a href="#结构体的所有权" class="headerlink" title="结构体的所有权"></a>结构体的所有权</h1><p>在上面举的这个例子中</p>
-<div class="highlight-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="code"><pre><span class="line">struct User&#123;</span><br><span class="line">  username: String,</span><br><span class="line">  email: String,</span><br><span class="line">  sign_in_count: u64,</span><br><span class="line">  active: bool,</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">fn main() &#123;</span><br><span class="line">    let user1 = User&#123;</span><br><span class="line">       email: String::from(&quot;test@1.com&quot;),</span><br><span class="line">       username: String::from(&quot;haha&quot;),</span><br><span class="line">       sign_in_count: 1,</span><br><span class="line">       active: true,</span><br><span class="line">    &#125;;</span><br><span class="line">    println!(&quot;user1: &#123;&#125;&quot;, user1.email);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
-
-<p>我们定义的所有字段都是具有值的所有权的，所以结构体实例能具有所有字段数据的所有权，能伴随着自己直到离开作用域，但也有不具有所有权的定义方式</p>
-<div class="highlight-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="code"><pre><span class="line">struct User&#123;</span><br><span class="line">  username: &amp;str,</span><br><span class="line">  email: &amp;str,</span><br><span class="line">  sign_in_count: u64,</span><br><span class="line">  active: bool,</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">fn main() &#123;</span><br><span class="line">    let user1 = User&#123;</span><br><span class="line">       email: String::from(&quot;test@1.com&quot;),</span><br><span class="line">       username: String::from(&quot;haha&quot;),</span><br><span class="line">       sign_in_count: 1,</span><br><span class="line">       active: true,</span><br><span class="line">    &#125;;</span><br><span class="line">    println!(&quot;user1: &#123;&#125;&quot;, user1.email);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
-
-<p>但这种方式现在是没办法定义通过的，报错提示需要指定生命周期，这个涉及到了生命周期，所以就放到后面介绍了。</p>
-<h1 id="初试trait——为结构体增加更多有用的功能"><a href="#初试trait——为结构体增加更多有用的功能" class="headerlink" title="初试trait——为结构体增加更多有用的功能"></a>初试trait——为结构体增加更多有用的功能</h1><p>说实话我不知道这个trait是什么意思，大概查了一下，是 特性（性状）的意思，用来定义一个类型可能和其他类型共享的功能，或许差不多相当于和 python 里的 <strong>xxx</strong> 差不多吗？但看样子还能自己定义的样子。先不管吧，大概了解一下概念，先学着。</p>
-<h2 id="打印结构体"><a href="#打印结构体" class="headerlink" title="打印结构体"></a>打印结构体</h2><p>用过 python 的应该都知道 python 类有个 <code>__str__</code> 函数，可以定义一个类的字符串格式，方便输出成人类能查看的格式，而不是一串地址，Rust 的结构体也有这个功能—— <code>Display</code>。</p>
-<p>我们可以先跑一下这段代码</p>
-<div class="highlight-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="code"><pre><span class="line">struct rectangle&#123;</span><br><span class="line">  w: u32,</span><br><span class="line">  h: u32</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">fn main() &#123;</span><br><span class="line">  let rect = rectangle&#123;w: 10, h: 20&#125;;</span><br><span class="line">  println!(&quot;rectangle is &#123;&#125;&quot;, rect);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
-
-<p>可以看到一个报错</p>
-<div class="highlight-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="code"><pre><span class="line">= help: the trait `std::fmt::Display` is not implemented for `rectangle`</span><br><span class="line">= note: in format strings you may be able to use `&#123;:?&#125;` (or &#123;:#?&#125; for pretty-print) instead</span><br></pre></td></tr></table></figure></div>
-
-<p><code>the trait std::fmt::Display is not implemented for rectangle </code>意思就是这个结构体还没实现 <code>Display</code> 这个方法，也就是说，<code>println!</code> 这个宏在输出的时候，还会调用一下类型的格式化函数，来进行指定的输出，之前我们用的基本类型都是默认实现了 <code>Display</code> 方法的，而这个 <code>rectangle</code> 是我们自己定义的，没有 <code>Display</code> 方法，<code>println!</code> 就不知道怎么格式化了，所以就报错。</p>
-<p>但除了这个还有一个有意思的提示 <code>in format strings you may be able to use &#123;:?&#125; (or &#123;:#?&#125; for pretty-print) instead</code> 。这句话告诉我们，可以用 <code>&#123;:?&#125;&#123;:#?&#125;</code> 来整一个漂亮的输出？啥意思？写一下吧~</p>
-<div class="highlight-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="code"><pre><span class="line">= help: the trait `Debug` is not implemented for `rectangle`</span><br><span class="line">= note: add `#[derive(Debug)]` to `rectangle` or manually `impl Debug for rectangle`</span><br></pre></td></tr></table></figure></div>
-
-<p>被骗了，还是报错。但我们发现了另一个有意思的 trait—— <code>Debug</code> 。也就是说，Rust 对格式化的方法区分了两种，Debug 是专门面向开发者调试时的输出用格式。我超，什么是现代化语法啊（后仰）。这种特性真能派上不少用途。</p>
-<p>提示里说，要么添加<code> [derive(Debug)]</code> 要么自己实现一个 <code>Debug</code> 我们可以先添加一下这个试试</p>
-<div class="highlight-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="code"><pre><span class="line">#[derive(Debug)]</span><br><span class="line">struct rectangle&#123;</span><br><span class="line">  w: u32,</span><br><span class="line">  h: u32</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">fn main() &#123;</span><br><span class="line">  let rect = rectangle&#123;w: 10, h: 20&#125;;</span><br><span class="line">  println!(&quot;rectangle is &#123;:?&#125;&quot;, rect);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
-
-<p>添加在函数头，进行一个 <code>Debug</code> 注解就可以了，这次运行就不会报错了。我们来看看输出是怎样的</p>
-<div class="highlight-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="code"><pre><span class="line">rectangle is rectangle &#123; w: 10, h: 20 &#125;</span><br></pre></td></tr></table></figure></div>
-
-<p>可见 Rust 标准的 <code>Debug</code> 格式化输出就是 结构体名{所有字段名: 对应的值}，嗯，挺不错的，不用自己手动一个一个输出了。我们再来看看之前提示里提到的另一个 <code>&#123;:#?&#125;</code> 吧</p>
-<div class="highlight-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="code"><pre><span class="line">rectangle is rectangle &#123;</span><br><span class="line">    w: 10,</span><br><span class="line">    h: 20,</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
-
-<p>这个输出会更好看点，有了一定的排版，对于复杂的结构体会更有可读性。</p>
-<p>好，书上的 trait 介绍就到这里结束了（是不是把一开始的 <code>Format</code> 忘了），它说到第 10 章的时候会更详细的介绍 trait 的时候，可以通过像这种对结构体进行 trait 注解的方式提供很多功能，包括自带的，甚至可以自己自定义，确实期待。</p>
-<h1 id="方法"><a href="#方法" class="headerlink" title="方法"></a>方法</h1><p>结构体，或者说类，当然不能少了函数，书上对普通函数和结构体里的函数区分了一下概念，结构体内的函数叫方法，因为方法的定义有局限性，例如参数要有self，只能定义在结构体或trait之类的地方，属于是一个子集吧。我们也严谨点，区分一下吧。</p>
-<h2 id="定义"><a href="#定义" class="headerlink" title="定义"></a>定义</h2><div class="highlight-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="code"><pre><span class="line">#[derive(Debug)]</span><br><span class="line">struct Rectangle&#123;</span><br><span class="line">  w: u32,</span><br><span class="line">  h: u32</span><br><span class="line">&#125;</span><br><span class="line">impl Rectangle &#123;</span><br><span class="line">    fn area(&amp;self) -&gt; u32 &#123;</span><br><span class="line">       self.w * self.h</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">fn main() &#123;</span><br><span class="line">  let rect = Rectangle&#123;w: 10, h: 20&#125;;</span><br><span class="line">  println!(&quot;rectangle&#x27;s area is &#123;:#?&#125;&quot;, rect.area());</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
-
-<p>（吐槽：这里把 <code>rectangle</code> 的首字母大写了，因为 Rust 的编译器居然会警告我的命名不规范，牛）</p>
-<p>可以看见，方法和函数定义差不多，也是用 <code>fn</code> 来定义，指定哪个函数里的话倒是比较意外，居然不是写在 <code>Rectangle </code>定义的花括号里，而是另开一个 <code>impl Rectangle</code> 再来定义方法。另外，Rust 方法和 Python 也有点相似之处，也是通过 <code>self</code> 来指代当前实例，<code>self</code> 可以用三种方式来定义</p>
-<ol>
-<li><code>&amp;self</code> ：不可变引用，这个是最常见的，我们只要读取数据，什么也不干，所以不需要用到所有权，也最方便</li>
-<li><code>self</code>：获取所有权，应该最不常见，有时方法需要用来转换<code>self</code>类型的话，需要用到所有权，获取所有权后再进行返回；如果不返回的话，所有权在调用完方法就被回收了，实例就销毁了。</li>
-<li><code>&amp;mul self</code>：可变引用，也没什么好说的，就是有时要改变实例内字段的值时会用。</li>
-</ol>
-<p>然后书上介绍了 Rust 为什么没有 <code>-&gt;</code> 运算符的问题，我没太看懂，就简述一下我的理解，具体感兴趣可以自行看书或查阅资料。</p>
-<p>C++在对于一个指针类型的结构体变量里，需要对变量进行一次解引用，也就是 <code>ractangle-&gt;area()= (*rectangle).area()</code> 所以额外定义了一个 <code>-&gt;</code> 运算符写起来方便些。而 Rust 里，self的类型被显式定义了，所以编译器可以自动的根据你定义的 <code>self</code> 类型，去自动推理出 <code>self</code> 是否需要自动引用还是解引用，所以就不需要 <code>-&gt;</code> 运算符了。</p>
-<h2 id="关联函数"><a href="#关联函数" class="headerlink" title="关联函数"></a>关联函数</h2><p>在 <code>impl</code> 块里，除了带 <code>self</code> 的方法之外，Rust 还允许在块里定义不含 <code>self</code> 的函数，这些函数因为和结构体有关联，又不太需要 <code>self</code> 所以称为关联函数。和 Python 的 <code>@staticmethod</code> 差不多吧</p>
-<p>这里用一个定义函数来举例</p>
-<div class="highlight-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="code"><pre><span class="line">#[derive(Debug)]</span><br><span class="line">struct Rectangle&#123;</span><br><span class="line">  w: u32,</span><br><span class="line">  h: u32</span><br><span class="line">&#125;</span><br><span class="line">impl Rectangle &#123;</span><br><span class="line">    fn area(self) -&gt; u32 &#123;</span><br><span class="line">       self.w * self.h</span><br><span class="line">    &#125;</span><br><span class="line">    fn square(size: u32) -&gt; Rectangle &#123;</span><br><span class="line">       Rectangle &#123; w: size, h: size &#125;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">fn main() &#123;</span><br><span class="line">  let rect = Rectangle&#123;w: 10, h: 20&#125;;</span><br><span class="line">  println!(&quot;rectangle&#x27;s area is &#123;:#?&#125;&quot;, rect.area());</span><br><span class="line">  println!(&quot;rectangle is &#123;:#?&#125;&quot;, Rectangle::square(3));</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
-
-<p>使用也就是指定命名空间调用就可以了。</p>
-<h2 id="多个impl块"><a href="#多个impl块" class="headerlink" title="多个impl块"></a>多个impl块</h2><p>使用多个 impl 块也是合法的，可以编译通过。书上说后面会有应用场景介绍，那就后面再看吧，目前感觉还派不上用场？</p>
-<div class="highlight-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="code"><pre><span class="line">#[derive(Debug)]</span><br><span class="line">struct Rectangle&#123;</span><br><span class="line">  w: u32,</span><br><span class="line">  h: u32</span><br><span class="line">&#125;</span><br><span class="line">impl Rectangle &#123;</span><br><span class="line">    fn area(self) -&gt; u32 &#123;</span><br><span class="line">       self.w * self.h</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br><span class="line">impl Rectangle &#123;</span><br><span class="line">    fn square(size: u32) -&gt; Rectangle &#123;</span><br><span class="line">       Rectangle&#123;w: size, h: size&#125;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br><span class="line">    </span><br><span class="line"></span><br><span class="line">fn main() &#123;</span><br><span class="line">  let rect = Rectangle&#123;w: 10, h: 20&#125;;</span><br><span class="line">  println!(&quot;rectangle&#x27;s area is &#123;:#?&#125;&quot;, rect.area());</span><br><span class="line">  println!(&quot;rectangle is &#123;:#?&#125;&quot;, Rectangle::square(3));</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
-
-<hr>
-<p>本章到此结束！没什么好总结的，是比较基础的，也很重要的一部分，下一章继续干。</p>
-]]></content>
-      <tags>
-        <tag>Rust</tag>
-      </tags>
-  </entry>
-  <entry>
     <title>【Rust 学习记录】6. 枚举与模式匹配</title>
     <url>/2023/03/30/%E3%80%90Rust-%E5%AD%A6%E4%B9%A0%E8%AE%B0%E5%BD%95%E3%80%916-%E6%9E%9A%E4%B8%BE%E4%B8%8E%E6%A8%A1%E5%BC%8F%E5%8C%B9%E9%85%8D/</url>
     <content><![CDATA[<h1 id="定义枚举"><a href="#定义枚举" class="headerlink" title="定义枚举"></a>定义枚举</h1><p>例子：IP地址，只有 IPV4, IPV6 两个模式。</p>
@@ -940,118 +970,6 @@
 <hr>
 <p>第六章也就搞定了，大致总结一下，这章主要就是讲了一下1. 枚举类型对于结构体的优势所在，2. match对于if-else的优势所在，3. 独特的空值设计理念</p>
 <p>今天就到这里吧，后面还有7，8，9章三章的基础通用编程知识，学完就差不多进入进阶阶段了。</p>
-]]></content>
-      <tags>
-        <tag>Rust</tag>
-      </tags>
-  </entry>
-  <entry>
-    <title>【Rust 学习记录】13. 闭包与迭代器</title>
-    <url>/2024/01/18/%E3%80%90Rust-%E5%AD%A6%E4%B9%A0%E8%AE%B0%E5%BD%95%E3%80%9113-%E9%97%AD%E5%8C%85%E4%B8%8E%E8%BF%AD%E4%BB%A3%E5%99%A8/</url>
-    <content><![CDATA[<h1 id="闭包：能够捕获环境的匿名函数"><a href="#闭包：能够捕获环境的匿名函数" class="headerlink" title="闭包：能够捕获环境的匿名函数"></a>闭包：能够捕获环境的匿名函数</h1><p>如这个小节的标题所示，闭包其实就是一个匿名函数，可以接收变量，也可以返回值，主要是用来实现一些代码复用和自定义的行为。</p>
-<h2 id="概述"><a href="#概述" class="headerlink" title="概述"></a>概述</h2><p>首先，闭包的基本定义方法如下</p>
-<div class="highlight-container" data-rel="Rust"><figure class="iseeu highlight rust"><table><tr><td class="code"><pre><span class="line"><span class="keyword">fn</span> <span class="title function_">main</span>() &#123;</span><br><span class="line">    <span class="keyword">let</span> <span class="variable">a</span> = <span class="number">1</span>;</span><br><span class="line">    <span class="keyword">let</span> <span class="variable">b</span> = <span class="number">2</span>;</span><br><span class="line">    <span class="keyword">let</span> <span class="variable">c</span> = |a, b|&#123;a+b&#125;;</span><br><span class="line">    <span class="keyword">let</span> <span class="variable">d</span> = |a, b| a-b;</span><br><span class="line">    <span class="built_in">println!</span>(<span class="string">&quot;&#123;&#125;, &#123;&#125;&quot;</span>, <span class="title function_ invoke__">c</span>(a, b), <span class="title function_ invoke__">d</span>(a, b));</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
-
-<ol>
-<li>通过**||**包裹住传入的参数，通过逗号隔开</li>
-<li>花括号内定义函数的行为。当然，对于简短的函数，例如a+b这种一条表达式直接返回值的，也可以不用花括号，如d</li>
-</ol>
-<p>闭包与函数不同的是</p>
-<ol>
-<li><p>闭包内<strong>不强迫显示标注类型</strong>，因为考虑到闭包这种通常使用的场景就是一个狭窄的上下文内，进行一个暂时的函数定义，而不会被广泛的定义。So, rust的设计者认为这种场景下干脆默认直接交给编译器推理就行。所以，闭包也有编译期固定类型的特性，闭包第一次被调用的时候，就按照第一次传入的参数被固定了，那第二次调用的时候是无法使用其他类型的参数传入的。如下面的代码会报错：<code>error[E0308]: arguments to this function are incorrect</code></p>
-<div class="highlight-container" data-rel="Rust"><figure class="iseeu highlight rust"><table><tr><td class="code"><pre><span class="line"><span class="keyword">fn</span> <span class="title function_">main</span>() &#123;</span><br><span class="line">    <span class="keyword">let</span> <span class="variable">a</span> = <span class="number">1</span>;</span><br><span class="line">    <span class="keyword">let</span> <span class="variable">b</span> = <span class="number">2</span>;</span><br><span class="line">    <span class="keyword">let</span> <span class="variable">closure</span> = |a, b|&#123;a+b&#125;;</span><br><span class="line">    <span class="built_in">println!</span>(<span class="string">&quot;&#123;&#125;&quot;</span>, <span class="title function_ invoke__">closure</span>(a, b));</span><br><span class="line">    <span class="keyword">let</span> <span class="variable">c</span> = <span class="number">1.1</span>;</span><br><span class="line">    <span class="keyword">let</span> <span class="variable">d</span> = <span class="number">2.2</span>;</span><br><span class="line">    <span class="built_in">println!</span>(<span class="string">&quot;&#123;&#125;&quot;</span>, <span class="title function_ invoke__">closure</span>(c, d));</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
-
-<p>如果要实现复杂的闭包，用泛型等，自行指定类型也是没有问题的</p>
-</li>
-<li><p>闭包<strong>可以作为变量存储</strong>，这也就增加了更多代码复用的写法，例如作为变量存到结构体里，在结构体里按需调用之类的</p>
-</li>
-<li><p>闭包<strong>可以捕获环境上下文</strong>；这是一个与函数相比最大的不同点，这个就稍微展开来讲讲。</p>
-</li>
-</ol>
-<h2 id="使用闭包捕获上下文环境"><a href="#使用闭包捕获上下文环境" class="headerlink" title="使用闭包捕获上下文环境"></a>使用闭包捕获上下文环境</h2><p>首先，捕获上下文是什么意思？看代码就知道了：</p>
-<div class="highlight-container" data-rel="Rust"><figure class="iseeu highlight rust"><table><tr><td class="code"><pre><span class="line"><span class="keyword">fn</span> <span class="title function_">main</span>() &#123;</span><br><span class="line">    <span class="keyword">let</span> <span class="variable">a</span> = <span class="number">1</span>;</span><br><span class="line">    <span class="keyword">let</span> <span class="variable">closure</span> = |num| num==a;</span><br><span class="line">    <span class="built_in">println!</span>(<span class="string">&quot;&#123;&#125;&quot;</span>, <span class="title function_ invoke__">closure</span>(<span class="number">1</span>));</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
-
-<p>在代码里可以看到，我们的闭包在没有传入a的情况下，获取到了闭包外的值a来进行一系列的处理。而普通函数如果不对a进行显示的传入的话，是不可能获得a的值的，这就是所谓的捕获上下文的能力。</p>
-<p>那么问题来了，rust里的核心机制就是所有权，参数到了函数里，所有权也会转到函数中，那a在闭包内的所有权是怎么变化的呢？</p>
-<p>我们换个例子来讲，因为a是整型，是存储在栈里的变量，在传入传出的时候是无脑的复制一份所有权，所以不具有代表性，我们换成数组。</p>
-<div class="highlight-container" data-rel="Rust"><figure class="iseeu highlight rust"><table><tr><td class="code"><pre><span class="line"><span class="keyword">fn</span> <span class="title function_">main</span>() &#123;</span><br><span class="line">    <span class="keyword">let</span> <span class="variable">a</span> = <span class="built_in">vec!</span>[<span class="number">1</span>,<span class="number">2</span>,<span class="number">3</span>];</span><br><span class="line">    <span class="keyword">let</span> <span class="variable">closure</span> = |num| num ==a[<span class="number">0</span>];</span><br><span class="line">    <span class="built_in">println!</span>(<span class="string">&quot;&#123;&#125;&quot;</span>, <span class="title function_ invoke__">closure</span>(<span class="number">1</span>));</span><br><span class="line">    <span class="built_in">println!</span>(<span class="string">&quot;&#123;:?&#125;&quot;</span>, a);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
-
-<p>闭包里面包含了三个trait，分别是<strong>FnOnce</strong>, <strong>FnMut</strong>, <strong>Fn</strong>，而对于每一个闭包，至少实现了这三个trait中的一个。</p>
-<ol>
-<li><strong>FnOnce</strong>是在闭包定义时会调用的，而且也只会调用一次的trait，他会把捕获到的环境变量所有权转移到闭包环境内。</li>
-<li><strong>FnMut</strong>是可变的借用捕获的变量，不夺取所有权</li>
-<li><strong>Fn</strong>则是不可变的借用</li>
-</ol>
-<p>闭包会对变量实现哪个trait是自动的，主要取决于你在闭包内用变量来干了什么。例如我的数组例子里，是可以运行成功的，因为我只简单的使用了一下数组内的元素进行&#x3D;&#x3D;的比较，并没有设计数值修改，所以闭包自动选择了不可变借用的形式。如以下形式，就是可变借用：</p>
-<div class="highlight-container" data-rel="Rust"><figure class="iseeu highlight rust"><table><tr><td class="code"><pre><span class="line"><span class="keyword">fn</span> <span class="title function_">main</span>() &#123;</span><br><span class="line">    <span class="keyword">let</span> <span class="keyword">mut </span><span class="variable">a</span> = <span class="built_in">vec!</span>[<span class="number">1</span>, <span class="number">2</span>, <span class="number">3</span>]; <span class="comment">// 注意a要改成可变</span></span><br><span class="line">    <span class="keyword">let</span> <span class="variable">closure</span> = |tmp| &#123;</span><br><span class="line">        a = tmp;</span><br><span class="line">        a</span><br><span class="line">    &#125;;</span><br><span class="line">    <span class="keyword">let</span> <span class="variable">b</span> = <span class="built_in">vec!</span>[<span class="number">3</span>, <span class="number">4</span>, <span class="number">5</span>];</span><br><span class="line">    <span class="built_in">println!</span>(<span class="string">&quot;&#123;:?&#125;&quot;</span>, <span class="title function_ invoke__">closure</span>(b));</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
-
-<p>如果你希望夺取所有权的话，有一个关键词<strong>move</strong>可以实现这么一个功能。</p>
-<div class="highlight-container" data-rel="Rust"><figure class="iseeu highlight rust"><table><tr><td class="code"><pre><span class="line"><span class="keyword">fn</span> <span class="title function_">main</span>() &#123;</span><br><span class="line">    <span class="keyword">let</span> <span class="variable">a</span> = <span class="built_in">vec!</span>[<span class="number">1</span>, <span class="number">2</span>, <span class="number">3</span>];</span><br><span class="line">    <span class="keyword">let</span> <span class="variable">closure</span> = <span class="keyword">move</span> |num| num == a[<span class="number">0</span>];</span><br><span class="line">    <span class="built_in">println!</span>(<span class="string">&quot;&#123;&#125;&quot;</span>, <span class="title function_ invoke__">closure</span>(<span class="number">1</span>));</span><br><span class="line">    <span class="built_in">println!</span>(<span class="string">&quot;&#123;:?&#125;&quot;</span>, a);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
-
-<p>定义为move后因为a的所有权被移到了闭包内，因此代码报错，无法运行。</p>
-<p>除了自动实现的以外，你也可以采用之前讲的trait相关内容，为闭包指定trait类型，也可以重载实现trait以自定义更多的行为，这里就不多做讲解了。</p>
-<h1 id="迭代器：处理元素序列"><a href="#迭代器：处理元素序列" class="headerlink" title="迭代器：处理元素序列"></a>迭代器：处理元素序列</h1><p>迭代器也并不是一个新概念了，简单来说，迭代器主要就是用来遍历序列的，主要是解决传统遍历方式需要程序员自己判断序列是什么时候结束的问题，用迭代器就可以省去每次遍历都要定义一个&#x3D;0的量，获取一次序列大小的逻辑。</p>
-<p>迭代器的本质是一个<code>Iterator</code>的trait，如下：</p>
-<div class="highlight-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="code"><pre><span class="line">pub trait Iterator &#123;</span><br><span class="line">    type Item;</span><br><span class="line"></span><br><span class="line">    fn next(&amp;mut self) -&gt; Option&lt;Self::Item&gt;;</span><br><span class="line"></span><br><span class="line">    // 这里省略了由Rust给出的默认实现方法</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
-
-<p>所以迭代器本质上就是不断的调用next方法，生成下一个元素的值，包装成Option然后返回。</p>
-<p>迭代器的生成是lazy的，和python的yield一样，只有当你遍历到那个元素的时候，迭代器才会使用next生成一个元素，然后返回到外面提供用户使用，在没有使用到的时候什么也不会发生，这在一定程度上节约了内存的使用。</p>
-<p>上面的代码有一些新的语法，<code>type Item</code>，<code>Self::Item</code>等，这个Item的功能是用来指定一个数据类型，后面会讲。</p>
-<h2 id="创建一个迭代器"><a href="#创建一个迭代器" class="headerlink" title="创建一个迭代器"></a>创建一个迭代器</h2><h3 id="iter"><a href="#iter" class="headerlink" title=".iter()"></a>.iter()</h3><p>创建一个迭代器有很多方法，最基础的就是.iter()</p>
-<div class="highlight-container" data-rel="Rust"><figure class="iseeu highlight rust"><table><tr><td class="code"><pre><span class="line"><span class="keyword">fn</span> <span class="title function_">main</span>() &#123;</span><br><span class="line">    <span class="keyword">let</span> <span class="variable">a</span> = <span class="built_in">vec!</span>[<span class="number">1</span>, <span class="number">2</span>, <span class="number">3</span>];</span><br><span class="line">    <span class="keyword">let</span> <span class="variable">a_iter</span> = a.<span class="title function_ invoke__">iter</span>();</span><br><span class="line">    <span class="keyword">for</span> <span class="variable">i</span> <span class="keyword">in</span> a_iter &#123;</span><br><span class="line">        <span class="built_in">println!</span>(<span class="string">&quot;&#123;&#125;&quot;</span>, i);</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
-
-<p>以上代码就是一个最简单的，使用<code>.iter()</code>创建一个列表的迭代器来遍历列表的示例。</p>
-<p>当然，既然说过迭代器的本质是不断调用next方法，所以我们也可以使用next方法来使用迭代器。</p>
-<div class="highlight-container" data-rel="Rust"><figure class="iseeu highlight rust"><table><tr><td class="code"><pre><span class="line"><span class="keyword">fn</span> <span class="title function_">main</span>() &#123;</span><br><span class="line">    <span class="keyword">let</span> <span class="variable">a</span> = <span class="built_in">vec!</span>[<span class="number">1</span>, <span class="number">2</span>, <span class="number">3</span>];</span><br><span class="line">    <span class="keyword">let</span> <span class="keyword">mut </span><span class="variable">a_iter</span> = a.<span class="title function_ invoke__">iter</span>();</span><br><span class="line">    <span class="built_in">assert_eq!</span>(a_iter.<span class="title function_ invoke__">next</span>(), <span class="title function_ invoke__">Some</span>(&amp;<span class="number">1</span>));</span><br><span class="line">    <span class="built_in">assert_eq!</span>(a_iter.<span class="title function_ invoke__">next</span>(), <span class="title function_ invoke__">Some</span>(&amp;<span class="number">2</span>));</span><br><span class="line">    <span class="built_in">assert_eq!</span>(a_iter.<span class="title function_ invoke__">next</span>(), <span class="title function_ invoke__">Some</span>(&amp;<span class="number">3</span>));</span><br><span class="line">    <span class="built_in">assert_eq!</span>(a_iter.<span class="title function_ invoke__">next</span>(), <span class="literal">None</span>);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
-
-<p>这里需要注意的是，<strong>a_iter必须定义为可变</strong>，因为调用next是会不断的吃掉上一个变量，替换成下一个变量的迭代器。</p>
-<h3 id=""><a href="#" class="headerlink" title=""></a></h3><h2 id="使用迭代器"><a href="#使用迭代器" class="headerlink" title="使用迭代器"></a>使用迭代器</h2><p>因为next方法是会不断“吃掉”上一个元素的，因此迭代器的使用也伴随着迭代器的消耗。基本的for循环就是使用迭代器的一个方法。</p>
-<div class="highlight-container" data-rel="Rust"><figure class="iseeu highlight rust"><table><tr><td class="code"><pre><span class="line"><span class="keyword">fn</span> <span class="title function_">main</span>() &#123;</span><br><span class="line">    <span class="keyword">let</span> <span class="variable">a</span> = <span class="built_in">vec!</span>[<span class="number">1</span>, <span class="number">2</span>, <span class="number">3</span>];</span><br><span class="line">    <span class="keyword">let</span> <span class="variable">a_iter</span> = a.<span class="title function_ invoke__">iter</span>();</span><br><span class="line">    <span class="keyword">for</span> <span class="variable">i</span> <span class="keyword">in</span> a_iter &#123;</span><br><span class="line">        <span class="built_in">println!</span>(<span class="string">&quot;&#123;&#125;&quot;</span>, i);</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">for</span> <span class="variable">i</span> <span class="keyword">in</span> a_iter &#123;</span><br><span class="line">        <span class="built_in">println!</span>(<span class="string">&quot;&#123;&#125;&quot;</span>, i);</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
-
-<p>这段代码运行将会报错，可以看到，a_iter在被第一个for循环使用完之后，就无法继续使用了。</p>
-<p>除了基本的循环外，还有很多提供便捷功能的迭代器相关方法，它们也同样会消耗迭代器。</p>
-<ol>
-<li><p><code>sum</code>方法会自动生成所有迭代器，并返回其中所有元素的和。</p>
-<div class="highlight-container" data-rel="Rust"><figure class="iseeu highlight rust"><table><tr><td class="code"><pre><span class="line"><span class="keyword">fn</span> <span class="title function_">main</span>() &#123;</span><br><span class="line">    <span class="keyword">let</span> <span class="variable">a</span> = <span class="built_in">vec!</span>[<span class="number">1</span>, <span class="number">2</span>, <span class="number">3</span>];</span><br><span class="line">    <span class="keyword">let</span> <span class="variable">a_iter</span> = a.<span class="title function_ invoke__">iter</span>();</span><br><span class="line">    <span class="keyword">let</span> <span class="variable">total</span>: <span class="type">i32</span> = a_iter.<span class="title function_ invoke__">sum</span>();</span><br><span class="line">    <span class="built_in">println!</span>(<span class="string">&quot;&#123;&#125;&quot;</span>, total);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
-
-<p>需要注意的是，这里必须把a_iter.sum()的结果存储到变量中打印，并显示标注total的类型，但这是后面再讲的问题了</p>
-</li>
-<li><p><code>collect</code>方法可以自动收集所有迭代器生成的元素，返回一个列表。</p>
-</li>
-</ol>
-<p>除了消耗迭代器返回元素的方法外，还有一种方法可以消耗旧的迭代器，生成新的符合一定要求的迭代器。这种方法成为<strong>迭代器适配器</strong></p>
-<ol>
-<li><p><code>map</code>方法可以接收一个闭包作为参数，自定义一个新的迭代器出来。</p>
-<div class="highlight-container" data-rel="Rust"><figure class="iseeu highlight rust"><table><tr><td class="code"><pre><span class="line"><span class="keyword">fn</span> <span class="title function_">main</span>() &#123;</span><br><span class="line">    <span class="keyword">let</span> <span class="variable">a</span> = <span class="built_in">vec!</span>[<span class="number">1</span>, <span class="number">2</span>, <span class="number">3</span>];</span><br><span class="line">    <span class="keyword">let</span> <span class="variable">a_iter</span> = a.<span class="title function_ invoke__">iter</span>();</span><br><span class="line">    <span class="keyword">let</span> <span class="variable">a2_iter</span> = a_iter.<span class="title function_ invoke__">map</span>(|x| x * <span class="number">2</span>);</span><br><span class="line">    <span class="keyword">let</span> <span class="variable">b</span>: <span class="type">Vec</span>&lt;<span class="type">i32</span>&gt; = a2_iter.<span class="title function_ invoke__">collect</span>();</span><br><span class="line">    <span class="built_in">println!</span>(<span class="string">&quot;&#123;:?&#125;&quot;</span>, b);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
-
-<p>这个示例中，我们使用map方法，生成一个会把原来元素*2再返回的迭代器，再使用collect方法收集成新的列表并打印输出</p>
-</li>
-<li><p><code>filter</code>方法同样也是接收闭包为参数，但这个闭包必须是返回一个<strong>bool</strong>值，利用闭包的bool结果，filter方法会过滤掉返回结果不为true的迭代器。</p>
-<div class="highlight-container" data-rel="Rust"><figure class="iseeu highlight rust"><table><tr><td class="code"><pre><span class="line"><span class="keyword">fn</span> <span class="title function_">main</span>() &#123;</span><br><span class="line">    <span class="keyword">let</span> <span class="variable">a</span> = <span class="built_in">vec!</span>[<span class="number">1</span>, <span class="number">2</span>, <span class="number">3</span>, <span class="number">4</span>];</span><br><span class="line">    <span class="keyword">let</span> <span class="variable">a_iter</span> = a.<span class="title function_ invoke__">into_iter</span>();</span><br><span class="line">    <span class="keyword">let</span> <span class="variable">a2_iter</span> = a_iter.<span class="title function_ invoke__">filter</span>(|x| x % <span class="number">2</span> == <span class="number">0</span>);</span><br><span class="line">    <span class="keyword">let</span> <span class="variable">b</span>: <span class="type">Vec</span>&lt;<span class="type">i32</span>&gt; = a2_iter.<span class="title function_ invoke__">collect</span>();</span><br><span class="line">    <span class="built_in">println!</span>(<span class="string">&quot;&#123;:?&#125;&quot;</span>, b);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
-
-<p>这里使用的是into_iter，因为a.iter()返回的是一个<strong>引用</strong>，所以在执行%运算的时候会报类型不匹配的错误；要么解引用，要么用into_iter直接夺取所有权，这里我偷了个懒。（PS：上面的乘法能编译通过是因为乘法这种基本运算会自动解引用。）</p>
-<p>当然，既然filter和map的传入参数是闭包，自然也可以捕获环境上下文，感兴趣可以自己试试，这里就不多写演示代码了。</p>
-</li>
-</ol>
-<p>还有很多方法，例如zip()，skip()，这里就没办法一一展开了</p>
-<h2 id="自定义迭代器"><a href="#自定义迭代器" class="headerlink" title="自定义迭代器"></a>自定义迭代器</h2><p>迭代器本质上是一个Iterator trait，所以我们自然也可以定义一个结构体，为他实现一个Iterator trait，进而实现一个我们自定义的迭代器。</p>
-<div class="highlight-container" data-rel="Rust"><figure class="iseeu highlight rust"><table><tr><td class="code"><pre><span class="line"><span class="keyword">struct</span> <span class="title class_">Counter</span> &#123;</span><br><span class="line">    count: <span class="type">u32</span>,</span><br><span class="line">&#125;</span><br><span class="line"><span class="keyword">impl</span> <span class="title class_">Counter</span> &#123;</span><br><span class="line">    <span class="keyword">fn</span> <span class="title function_">new</span>() <span class="punctuation">-&gt;</span> Counter &#123;</span><br><span class="line">        Counter &#123; count: <span class="number">0</span> &#125;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br><span class="line"><span class="keyword">impl</span> <span class="title class_">Iterator</span> <span class="keyword">for</span> <span class="title class_">Counter</span> &#123;</span><br><span class="line">    <span class="keyword">type</span> <span class="title class_">Item</span> = <span class="type">u32</span>;</span><br><span class="line">    <span class="keyword">fn</span> <span class="title function_">next</span>(&amp;<span class="keyword">mut</span> <span class="keyword">self</span>) <span class="punctuation">-&gt;</span> <span class="type">Option</span>&lt;<span class="keyword">Self</span>::Item&gt; &#123;</span><br><span class="line">        <span class="keyword">self</span>.count += <span class="number">1</span>;</span><br><span class="line">        <span class="keyword">if</span> <span class="keyword">self</span>.count &lt; <span class="number">6</span> &#123;</span><br><span class="line">            <span class="title function_ invoke__">Some</span>(<span class="keyword">self</span>.count)</span><br><span class="line">        &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">            <span class="literal">None</span></span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br><span class="line"><span class="keyword">fn</span> <span class="title function_">main</span>() &#123;</span><br><span class="line">    <span class="keyword">let</span> <span class="variable">counter</span> = Counter::<span class="title function_ invoke__">new</span>();</span><br><span class="line">    <span class="keyword">for</span> <span class="variable">i</span> <span class="keyword">in</span> counter &#123;</span><br><span class="line">        <span class="built_in">println!</span>(<span class="string">&quot;&#123;&#125;&quot;</span>, i);</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
-
-<p>这段示例里，我们就定义了一个结构体<strong>Counter</strong>，内置一个u32变量<strong>count</strong>，初始值为0，然后为Counter实现了一个Iterator trait，让Counter结构体变成了一个迭代器，迭代的逻辑就是不断的递增结构体内的count变量，直到count&gt;&#x3D;6。</p>
-<h2 id="迭代器的性能分析"><a href="#迭代器的性能分析" class="headerlink" title="迭代器的性能分析"></a>迭代器的性能分析</h2><p>例如说我们现在有一个功能，需要在一堆字符串中，找到所有包含某个子串的字符串。那最简单的，利用循环的写法可以写成如下形式：</p>
-<div class="highlight-container" data-rel="Rust"><figure class="iseeu highlight rust"><table><tr><td class="code"><pre><span class="line"><span class="keyword">fn</span> <span class="title function_">search</span>&lt;<span class="symbol">&#x27;a</span>&gt;(query: &amp;<span class="type">str</span>, contents: &amp;<span class="symbol">&#x27;a</span> <span class="type">str</span>) <span class="punctuation">-&gt;</span> <span class="type">Vec</span>&lt;&amp;<span class="symbol">&#x27;a</span> <span class="type">str</span>&gt; &#123;</span><br><span class="line">    <span class="keyword">let</span> <span class="keyword">mut </span><span class="variable">results</span> = <span class="type">Vec</span>::<span class="title function_ invoke__">new</span>();</span><br><span class="line">    <span class="keyword">for</span> <span class="variable">line</span> <span class="keyword">in</span> contents.<span class="title function_ invoke__">lines</span>() &#123;</span><br><span class="line">        <span class="keyword">if</span> line.<span class="title function_ invoke__">contains</span>(query) &#123;</span><br><span class="line">            results.<span class="title function_ invoke__">push</span>(line);</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">    results</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
-
-<p>那在知道迭代器之后，我们自然也可以想到可以通过迭代器的filter方法，过滤出只包含这个子串的迭代器，迭代器的版本可以这么写：</p>
-<div class="highlight-container" data-rel="Rust"><figure class="iseeu highlight rust"><table><tr><td class="code"><pre><span class="line"><span class="keyword">pub</span> <span class="keyword">fn</span> <span class="title function_">search</span>&lt;<span class="symbol">&#x27;a</span>&gt;(query: &amp;<span class="type">str</span>, contents: &amp;<span class="symbol">&#x27;a</span> <span class="type">str</span>) <span class="punctuation">-&gt;</span> <span class="type">Vec</span>&lt;&amp;<span class="symbol">&#x27;a</span> <span class="type">str</span>&gt; &#123;</span><br><span class="line">    contents.<span class="title function_ invoke__">lines</span>()</span><br><span class="line">        .<span class="title function_ invoke__">filter</span>(|line| line.<span class="title function_ invoke__">contains</span>(query))</span><br><span class="line">        .<span class="title function_ invoke__">collect</span>()</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
-
-<p>那这两种写法有什么区别呢，多抽象一层迭代器的话，会不会有性能损失？</p>
-<p>答案是不会的。</p>
-<p>Rust官方书籍里用一本小说做了一次bench mark，结果表面，迭代器的写法在经过优化后比for循环更快。</p>
-<div class="highlight-container" data-rel="Bash"><figure class="iseeu highlight bash"><table><tr><td class="code"><pre><span class="line"><span class="built_in">test</span> bench_search_for  ... bench:  19,620,300 ns/iter (+/- 915,700)</span><br><span class="line"><span class="built_in">test</span> bench_search_iter ... bench:  19,234,900 ns/iter (+/- 657,200)</span><br></pre></td></tr></table></figure></div>
-
-<p>迭代器是Rust里的一种零开销抽象，所以我们在使用的时候根本不需要担心会不会引入额外的运行成本。</p>
-<p>至于快了的那一点，本质上是因为迭代器在编译过程中会运行一次展开优化，例如本来要运行12次的循环代码，如果是迭代器的话，在编译之后会展开成重复执行12次的代码，减少了循环控制时候的开销。</p>
-<p>但个人觉得可以忽略不计，大可依照个人习惯的去选择使用这两种写法，benchmark本质上只是证明了iter并不会引入额外开销，放心使用。</p>
 ]]></content>
       <tags>
         <tag>Rust</tag>
@@ -1331,71 +1249,6 @@
       </tags>
   </entry>
   <entry>
-    <title>【Rust学习记录】1. 开发环境搭建</title>
-    <url>/2023/03/24/%E3%80%90Rust%E5%AD%A6%E4%B9%A0%E8%AE%B0%E5%BD%95%E3%80%911-%E5%BC%80%E5%8F%91%E7%8E%AF%E5%A2%83%E6%90%AD%E5%BB%BA/</url>
-    <content><![CDATA[
-  <div class="note p-4 mb-4 rounded-small info">
-    <p>本系列参考书目：《RUST权威指南》</p>
-
-  </div>
-
-<p>久闻rust大名，趁着研究生还是学习生涯，抽空出来试试这个所谓的既高效，又安全的语言</p>
-<h1 id="环境安装与搭建"><a href="#环境安装与搭建" class="headerlink" title="环境安装与搭建"></a>环境安装与搭建</h1><h2 id="Rust安装"><a href="#Rust安装" class="headerlink" title="Rust安装"></a>Rust安装</h2><p>windows的安装很傻瓜式，只要进入<a class="link"   href="https://www.rust-lang.org/learn/get-started" >官网 <i class="fa-regular fa-arrow-up-right-from-square fa-sm"></i></a>，下载最新版本的安装包，按照进行安装即可。期间可能会提示让你安装VS的工具，照着安装即可。</p>
-<p>安装完成后，就可以通过 <code>rustc --version</code> 来测试是否安装成功了。</p>
-<p>同时，安装后rust也会在本地生成一份文档，可以通过 <code>rustup doc</code> 用浏览器打开。</p>
-<h1 id="Hello-World"><a href="#Hello-World" class="headerlink" title="Hello World!"></a>Hello World!</h1><p>接下来进行一个开启一门全新语言的必备仪式，hello world!</p>
-<ol>
-<li>新建一个文件命名为 <code>hello.rs</code> rs就是rust代码文件的后缀</li>
-<li>编写代码</li>
-</ol>
-<div class="highlight-container" data-rel="Cpp"><figure class="iseeu highlight cpp"><table><tr><td class="code"><pre><span class="line"><span class="function">fn <span class="title">main</span><span class="params">()</span></span>&#123;</span><br><span class="line">    println!(<span class="string">&quot;Hello, world!&quot;</span>); </span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
-
-<ol start="3">
-<li>编译程序 <code>rustc hello.rs</code> ，接下来就会看到文件夹内生成了一个可执行文件 hello.exe，执行它，就能看到你的 hello world啦~跨过这一步，我们就是一名rust开发者了</li>
-</ol>
-<p>稍微了解一下这个函数</p>
-<p>首先fn就是function的缩写，用来定义函数；其他语法都和c++差不多，唯独不一样的就是函数println后带着一个感叹号，这似乎是rust里的宏机制，这个后面再学学吧。</p>
-<h1 id="Cargo的安装与使用"><a href="#Cargo的安装与使用" class="headerlink" title="Cargo的安装与使用"></a>Cargo的安装与使用</h1><h2 id="创建项目"><a href="#创建项目" class="headerlink" title="创建项目"></a>创建项目</h2><p>书上写的是，cargo是构建+包管理的工具，或许可以理解成，ubuntu里的apt+cmake的组合？</p>
-<p>在安装rust时就已经同步安装了cargo，我们可以通过 <code>cargo --version</code> 来检查是否正确安装</p>
-<div class="highlight-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="code"><pre><span class="line">cargo new hello_cargo</span><br></pre></td></tr></table></figure></div>
-
-<p>这一个命令会使用cargo来创建新的项目架构，我们进入创建的hello_cargo文件夹，可以看到cargo帮我们初始化了一个Cargo.toml文件，一个src目录，放置了一个main.rs的源文件，还有一个.gitignore文件，说明它还帮我们配置了git版本管理</p>
-<p>关于toml文件，我们可以用编辑器打开它</p>
-<div class="highlight-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="code"><pre><span class="line">[package]</span><br><span class="line">name = &quot;hello_cargo&quot;</span><br><span class="line">version = &quot;0.1.0&quot;</span><br><span class="line">edition = &quot;2021&quot;</span><br><span class="line"></span><br><span class="line"># See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html</span><br><span class="line"></span><br><span class="line">[dependencies]</span><br></pre></td></tr></table></figure></div>
-
-<p>我们可以看到这么些东西，上面自然就是你所创建的代码包的相关信息，而dependencies就是我们代码需要依赖的第三方包信息，不过我们一个hello world不需要什么，所以现在这里是空的。</p>
-<p>也就是说，这是个rs项目的标准配置文件</p>
-<p>我们再打开main.rs，就会发现cargo已经帮我们写好了一个hello world程序~</p>
-<h2 id="编译、运行与发布"><a href="#编译、运行与发布" class="headerlink" title="编译、运行与发布"></a>编译、运行与发布</h2><p>之前用rustc来编译单个文件，现在我们来使用cargo构建整个项目，首先回到根目录 hello_cargo，输入命令</p>
-<div class="highlight-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="code"><pre><span class="line">cargo build</span><br></pre></td></tr></table></figure></div>
-
-<p><img  
-                     lazyload
-                     src="/images/loading.svg"
-                     data-src="/images/Snipaste_2023-03-24_21-59-03.jpg"
-                      alt="img"
-                ></p>
-<p>编译完成如上图，我们就可以发现，目录里生成了一个target文件夹，在<code> ./targe/debug</code> 目录下，就可以找到我们编译成功的可执行文件了，同样运行它，就能看到 hello world了</p>
-<p>PS：如果想要编译+运行，可以使用 <code>cargo run</code> 命令（若源代码未发生改变，cargo run不会重新进行构建，而是直接运行）</p>
-<p>另外，cargo还有一个比较好用的命令 <code>cargo check</code> ，这个命令可以让你在编译大型程序的时候，免去漫长的编译等待，快速的知道代码能否完成编译（真的这么神吗，cmake编译一个小时opencv最后环境出错编译失败的我如此问道）</p>
-<hr>
-<p>如果你已经准备好发布你的程序了，那么就可以用 <code>cargo build --release</code> 来编译代码，它会在 <code>target/release</code> 的目录下生成可执行文件，和debug不同的是，它会花更长的编译时间来优化你的代码，使代码有更好的运行性能。也就是说，普通的build侧重于快速的编译，让你调试程序，release build侧重于可执行文件的运行性能，用来交付给用户。</p>
-<p><img  
-                     lazyload
-                     src="/images/loading.svg"
-                     data-src="/images/Snipaste_2023-03-24_22-09-48.jpg"
-                      alt="img"
-                ></p>
-<p>可以看到编译后有一个optimized的标签，表示是优化过的target，同时也少了debug info。（但编译速度更快了，应该就是我之前debug编译过一次，基于那个的基础上，又花了0.84s进行优化）</p>
-<p>PS：同理，你想编译完直接测试，可以用 <code>cargo run --release</code></p>
-<p>这么看来，cargo应该就是rust构建项目的核心工具了。</p>
-<p>到此为止，第一章结束。</p>
-]]></content>
-      <tags>
-        <tag>Rust</tag>
-      </tags>
-  </entry>
-  <entry>
     <title>【Rust 学习记录】9. 错误处理</title>
     <url>/2023/04/06/%E3%80%90Rust-%E5%AD%A6%E4%B9%A0%E8%AE%B0%E5%BD%95%E3%80%919-%E9%94%99%E8%AF%AF%E5%A4%84%E7%90%86/</url>
     <content><![CDATA[
@@ -1514,6 +1367,212 @@
       </tags>
   </entry>
   <entry>
+    <title>【Rust学习记录】1. 开发环境搭建</title>
+    <url>/2023/03/24/%E3%80%90Rust%E5%AD%A6%E4%B9%A0%E8%AE%B0%E5%BD%95%E3%80%911-%E5%BC%80%E5%8F%91%E7%8E%AF%E5%A2%83%E6%90%AD%E5%BB%BA/</url>
+    <content><![CDATA[
+  <div class="note p-4 mb-4 rounded-small info">
+    <p>本系列参考书目：《RUST权威指南》</p>
+
+  </div>
+
+<p>久闻rust大名，趁着研究生还是学习生涯，抽空出来试试这个所谓的既高效，又安全的语言</p>
+<h1 id="环境安装与搭建"><a href="#环境安装与搭建" class="headerlink" title="环境安装与搭建"></a>环境安装与搭建</h1><h2 id="Rust安装"><a href="#Rust安装" class="headerlink" title="Rust安装"></a>Rust安装</h2><p>windows的安装很傻瓜式，只要进入<a class="link"   href="https://www.rust-lang.org/learn/get-started" >官网 <i class="fa-regular fa-arrow-up-right-from-square fa-sm"></i></a>，下载最新版本的安装包，按照进行安装即可。期间可能会提示让你安装VS的工具，照着安装即可。</p>
+<p>安装完成后，就可以通过 <code>rustc --version</code> 来测试是否安装成功了。</p>
+<p>同时，安装后rust也会在本地生成一份文档，可以通过 <code>rustup doc</code> 用浏览器打开。</p>
+<h1 id="Hello-World"><a href="#Hello-World" class="headerlink" title="Hello World!"></a>Hello World!</h1><p>接下来进行一个开启一门全新语言的必备仪式，hello world!</p>
+<ol>
+<li>新建一个文件命名为 <code>hello.rs</code> rs就是rust代码文件的后缀</li>
+<li>编写代码</li>
+</ol>
+<div class="highlight-container" data-rel="Cpp"><figure class="iseeu highlight cpp"><table><tr><td class="code"><pre><span class="line"><span class="function">fn <span class="title">main</span><span class="params">()</span></span>&#123;</span><br><span class="line">    println!(<span class="string">&quot;Hello, world!&quot;</span>); </span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
+
+<ol start="3">
+<li>编译程序 <code>rustc hello.rs</code> ，接下来就会看到文件夹内生成了一个可执行文件 hello.exe，执行它，就能看到你的 hello world啦~跨过这一步，我们就是一名rust开发者了</li>
+</ol>
+<p>稍微了解一下这个函数</p>
+<p>首先fn就是function的缩写，用来定义函数；其他语法都和c++差不多，唯独不一样的就是函数println后带着一个感叹号，这似乎是rust里的宏机制，这个后面再学学吧。</p>
+<h1 id="Cargo的安装与使用"><a href="#Cargo的安装与使用" class="headerlink" title="Cargo的安装与使用"></a>Cargo的安装与使用</h1><h2 id="创建项目"><a href="#创建项目" class="headerlink" title="创建项目"></a>创建项目</h2><p>书上写的是，cargo是构建+包管理的工具，或许可以理解成，ubuntu里的apt+cmake的组合？</p>
+<p>在安装rust时就已经同步安装了cargo，我们可以通过 <code>cargo --version</code> 来检查是否正确安装</p>
+<div class="highlight-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="code"><pre><span class="line">cargo new hello_cargo</span><br></pre></td></tr></table></figure></div>
+
+<p>这一个命令会使用cargo来创建新的项目架构，我们进入创建的hello_cargo文件夹，可以看到cargo帮我们初始化了一个Cargo.toml文件，一个src目录，放置了一个main.rs的源文件，还有一个.gitignore文件，说明它还帮我们配置了git版本管理</p>
+<p>关于toml文件，我们可以用编辑器打开它</p>
+<div class="highlight-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="code"><pre><span class="line">[package]</span><br><span class="line">name = &quot;hello_cargo&quot;</span><br><span class="line">version = &quot;0.1.0&quot;</span><br><span class="line">edition = &quot;2021&quot;</span><br><span class="line"></span><br><span class="line"># See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html</span><br><span class="line"></span><br><span class="line">[dependencies]</span><br></pre></td></tr></table></figure></div>
+
+<p>我们可以看到这么些东西，上面自然就是你所创建的代码包的相关信息，而dependencies就是我们代码需要依赖的第三方包信息，不过我们一个hello world不需要什么，所以现在这里是空的。</p>
+<p>也就是说，这是个rs项目的标准配置文件</p>
+<p>我们再打开main.rs，就会发现cargo已经帮我们写好了一个hello world程序~</p>
+<h2 id="编译、运行与发布"><a href="#编译、运行与发布" class="headerlink" title="编译、运行与发布"></a>编译、运行与发布</h2><p>之前用rustc来编译单个文件，现在我们来使用cargo构建整个项目，首先回到根目录 hello_cargo，输入命令</p>
+<div class="highlight-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="code"><pre><span class="line">cargo build</span><br></pre></td></tr></table></figure></div>
+
+<p><img  
+                     lazyload
+                     src="/images/loading.svg"
+                     data-src="/images/Snipaste_2023-03-24_21-59-03.jpg"
+                      alt="img"
+                ></p>
+<p>编译完成如上图，我们就可以发现，目录里生成了一个target文件夹，在<code> ./targe/debug</code> 目录下，就可以找到我们编译成功的可执行文件了，同样运行它，就能看到 hello world了</p>
+<p>PS：如果想要编译+运行，可以使用 <code>cargo run</code> 命令（若源代码未发生改变，cargo run不会重新进行构建，而是直接运行）</p>
+<p>另外，cargo还有一个比较好用的命令 <code>cargo check</code> ，这个命令可以让你在编译大型程序的时候，免去漫长的编译等待，快速的知道代码能否完成编译（真的这么神吗，cmake编译一个小时opencv最后环境出错编译失败的我如此问道）</p>
+<hr>
+<p>如果你已经准备好发布你的程序了，那么就可以用 <code>cargo build --release</code> 来编译代码，它会在 <code>target/release</code> 的目录下生成可执行文件，和debug不同的是，它会花更长的编译时间来优化你的代码，使代码有更好的运行性能。也就是说，普通的build侧重于快速的编译，让你调试程序，release build侧重于可执行文件的运行性能，用来交付给用户。</p>
+<p><img  
+                     lazyload
+                     src="/images/loading.svg"
+                     data-src="/images/Snipaste_2023-03-24_22-09-48.jpg"
+                      alt="img"
+                ></p>
+<p>可以看到编译后有一个optimized的标签，表示是优化过的target，同时也少了debug info。（但编译速度更快了，应该就是我之前debug编译过一次，基于那个的基础上，又花了0.84s进行优化）</p>
+<p>PS：同理，你想编译完直接测试，可以用 <code>cargo run --release</code></p>
+<p>这么看来，cargo应该就是rust构建项目的核心工具了。</p>
+<p>到此为止，第一章结束。</p>
+]]></content>
+      <tags>
+        <tag>Rust</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>【Rust 学习记录】5. 结构体</title>
+    <url>/2023/03/30/%E3%80%90Rust-%E5%AD%A6%E4%B9%A0%E8%AE%B0%E5%BD%95%E3%80%915-%E7%BB%93%E6%9E%84%E4%BD%93/</url>
+    <content><![CDATA[<h1 id="定义及实例化方式"><a href="#定义及实例化方式" class="headerlink" title="定义及实例化方式"></a>定义及实例化方式</h1><h2 id="定义和创建实例"><a href="#定义和创建实例" class="headerlink" title="定义和创建实例"></a>定义和创建实例</h2><p>定义方法和 C++ 是一模一样了，详见代码</p>
+<div class="highlight-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="code"><pre><span class="line">struct User&#123;</span><br><span class="line">  username: String,</span><br><span class="line">  email: String,</span><br><span class="line">  sign_in_count: u64,</span><br><span class="line">  active: bool,</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
+
+<p>实例化方法稍显不同，方法和定义差不多，指名道姓的赋值，优势是不用对应顺序，可读性强。访问方法就还是传统的点运算符</p>
+<div class="highlight-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="code"><pre><span class="line">struct User&#123;</span><br><span class="line">  username: String,</span><br><span class="line">  email: String,</span><br><span class="line">  sign_in_count: u64,</span><br><span class="line">  active: bool,</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">fn main() &#123;</span><br><span class="line">    let user1 = User&#123;</span><br><span class="line">       email: String::from(&quot;test@1.com&quot;),</span><br><span class="line">       username: String::from(&quot;haha&quot;),</span><br><span class="line">       sign_in_count: 1,</span><br><span class="line">       active: true,</span><br><span class="line">    &#125;;</span><br><span class="line">    println!(&quot;user1: &#123;&#125;&quot;, user1.email);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
+
+<p>同理，结构体也有可变与不可变一说，<strong>可变结构体，结构体所有变量可变，不可变结构体，结构体所有变量不可变，Rust 没有让结构体部分变量可变，部分不可变的说法</strong></p>
+<h2 id="一些语法糖"><a href="#一些语法糖" class="headerlink" title="一些语法糖"></a>一些语法糖</h2><h3 id="同名参数对应赋值"><a href="#同名参数对应赋值" class="headerlink" title="同名参数对应赋值"></a>同名参数对应赋值</h3><p>如果每次都要写一个 email: xxxx， username: xxxx 好像有点麻烦是吗？Rust 提供了一个简单的方法，<strong>当变量名和结构体内的字段名完全一样的时候，会对应赋值</strong>（有一说一，这个设计挺有想法的，语法糖+1）</p>
+<p>所以我们可以很轻松的给 User 写一个创建用的函数，这样就可以实现带默认值，轻松的构建结构体实例了</p>
+<div class="highlight-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="code"><pre><span class="line">struct User&#123;</span><br><span class="line">  username: String,</span><br><span class="line">  email: String,</span><br><span class="line">  sign_in_count: u64,</span><br><span class="line">  active: bool,</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">fn create_user(email: String, username: String) -&gt; User &#123;</span><br><span class="line">  User &#123;</span><br><span class="line">    email,</span><br><span class="line">    username,</span><br><span class="line">    active: true,</span><br><span class="line">    sign_in_count: 1,</span><br><span class="line">  &#125;</span><br><span class="line">  // 不写分号返回 User 变量</span><br><span class="line">&#125;</span><br><span class="line">fn main() &#123;</span><br><span class="line">    let user1 = create_user(String::from(&quot;hah@haha.com&quot;), String::from(&quot;haha&quot;));</span><br><span class="line">    println!(&quot;user1: &#123;&#125;&quot;, user1.email);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
+
+<h3 id="用之前的实例构造现在的实例"><a href="#用之前的实例构造现在的实例" class="headerlink" title="用之前的实例构造现在的实例"></a>用之前的实例构造现在的实例</h3><p>在一些情况下其实结构体内的实例都不需要怎么变动，就像上面的例子里，<code>sign_in_count</code> 和 <code>active</code> 参数都是采用同一个默认值来赋给所有实例的，那有没有一些方法能简化这种情况的代码书写呢？有的。</p>
+<div class="highlight-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="code"><pre><span class="line">fn main() &#123;</span><br><span class="line">    let user1 = create_user(String::from(&quot;hah@haha.com&quot;), String::from(&quot;haha&quot;));</span><br><span class="line">    let user2 = User &#123;</span><br><span class="line">        email: String::from(&quot;user2@haha.com&quot;),</span><br><span class="line">        username: String::from(&quot;user2&quot;),</span><br><span class="line">        ..user1</span><br><span class="line">    &#125;;</span><br><span class="line">    println!(&quot;user2: &#123;&#125;&quot;, user2.active);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
+
+<p><code>..user1</code> 就代表了剩下的值都和 <code>user1</code> 一样，把 <code>user1</code> 里对应字段的值赋给 <code>user2</code> 即可。（这个感觉不如函数封装性好吧，但可能也看情况）</p>
+<h2 id="元组结构体——没有字段名的结构体"><a href="#元组结构体——没有字段名的结构体" class="headerlink" title="元组结构体——没有字段名的结构体"></a>元组结构体——没有字段名的结构体</h2><p>其实就相当于给元组命个名字，适用于很多不需要给字段命名的情况下，例如颜色的RGB，大家都懂是吧，就用一个三元组命名 <code>Color</code> 就好了。定义方式如下</p>
+<div class="highlight-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="code"><pre><span class="line">struct Color(i8, i8, i8);</span><br><span class="line"></span><br><span class="line">fn main() &#123;</span><br><span class="line">    let black = Color(0, 0, 0);</span><br><span class="line">    println!(&quot;user2: &#123;&#125;&quot;, black.0);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
+
+<p>值得一提的是，定义成结构体后也是用点运算符访问变量，而不是 [] 运算符了</p>
+<h2 id="空结构体——没有字段的结构体"><a href="#空结构体——没有字段的结构体" class="headerlink" title="空结构体——没有字段的结构体"></a>空结构体——没有字段的结构体</h2><p>当你想创建一个空结构体的时候，也是不会报错的，原理说是和空元组相似，然后在某些方面会有用，后续再介绍。</p>
+<p>我也不太懂，就不多说了，后面再看吧。</p>
+<h1 id="结构体的所有权"><a href="#结构体的所有权" class="headerlink" title="结构体的所有权"></a>结构体的所有权</h1><p>在上面举的这个例子中</p>
+<div class="highlight-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="code"><pre><span class="line">struct User&#123;</span><br><span class="line">  username: String,</span><br><span class="line">  email: String,</span><br><span class="line">  sign_in_count: u64,</span><br><span class="line">  active: bool,</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">fn main() &#123;</span><br><span class="line">    let user1 = User&#123;</span><br><span class="line">       email: String::from(&quot;test@1.com&quot;),</span><br><span class="line">       username: String::from(&quot;haha&quot;),</span><br><span class="line">       sign_in_count: 1,</span><br><span class="line">       active: true,</span><br><span class="line">    &#125;;</span><br><span class="line">    println!(&quot;user1: &#123;&#125;&quot;, user1.email);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
+
+<p>我们定义的所有字段都是具有值的所有权的，所以结构体实例能具有所有字段数据的所有权，能伴随着自己直到离开作用域，但也有不具有所有权的定义方式</p>
+<div class="highlight-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="code"><pre><span class="line">struct User&#123;</span><br><span class="line">  username: &amp;str,</span><br><span class="line">  email: &amp;str,</span><br><span class="line">  sign_in_count: u64,</span><br><span class="line">  active: bool,</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">fn main() &#123;</span><br><span class="line">    let user1 = User&#123;</span><br><span class="line">       email: String::from(&quot;test@1.com&quot;),</span><br><span class="line">       username: String::from(&quot;haha&quot;),</span><br><span class="line">       sign_in_count: 1,</span><br><span class="line">       active: true,</span><br><span class="line">    &#125;;</span><br><span class="line">    println!(&quot;user1: &#123;&#125;&quot;, user1.email);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
+
+<p>但这种方式现在是没办法定义通过的，报错提示需要指定生命周期，这个涉及到了生命周期，所以就放到后面介绍了。</p>
+<h1 id="初试trait——为结构体增加更多有用的功能"><a href="#初试trait——为结构体增加更多有用的功能" class="headerlink" title="初试trait——为结构体增加更多有用的功能"></a>初试trait——为结构体增加更多有用的功能</h1><p>说实话我不知道这个trait是什么意思，大概查了一下，是 特性（性状）的意思，用来定义一个类型可能和其他类型共享的功能，或许差不多相当于和 python 里的 <strong>xxx</strong> 差不多吗？但看样子还能自己定义的样子。先不管吧，大概了解一下概念，先学着。</p>
+<h2 id="打印结构体"><a href="#打印结构体" class="headerlink" title="打印结构体"></a>打印结构体</h2><p>用过 python 的应该都知道 python 类有个 <code>__str__</code> 函数，可以定义一个类的字符串格式，方便输出成人类能查看的格式，而不是一串地址，Rust 的结构体也有这个功能—— <code>Display</code>。</p>
+<p>我们可以先跑一下这段代码</p>
+<div class="highlight-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="code"><pre><span class="line">struct rectangle&#123;</span><br><span class="line">  w: u32,</span><br><span class="line">  h: u32</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">fn main() &#123;</span><br><span class="line">  let rect = rectangle&#123;w: 10, h: 20&#125;;</span><br><span class="line">  println!(&quot;rectangle is &#123;&#125;&quot;, rect);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
+
+<p>可以看到一个报错</p>
+<div class="highlight-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="code"><pre><span class="line">= help: the trait `std::fmt::Display` is not implemented for `rectangle`</span><br><span class="line">= note: in format strings you may be able to use `&#123;:?&#125;` (or &#123;:#?&#125; for pretty-print) instead</span><br></pre></td></tr></table></figure></div>
+
+<p><code>the trait std::fmt::Display is not implemented for rectangle </code>意思就是这个结构体还没实现 <code>Display</code> 这个方法，也就是说，<code>println!</code> 这个宏在输出的时候，还会调用一下类型的格式化函数，来进行指定的输出，之前我们用的基本类型都是默认实现了 <code>Display</code> 方法的，而这个 <code>rectangle</code> 是我们自己定义的，没有 <code>Display</code> 方法，<code>println!</code> 就不知道怎么格式化了，所以就报错。</p>
+<p>但除了这个还有一个有意思的提示 <code>in format strings you may be able to use &#123;:?&#125; (or &#123;:#?&#125; for pretty-print) instead</code> 。这句话告诉我们，可以用 <code>&#123;:?&#125;&#123;:#?&#125;</code> 来整一个漂亮的输出？啥意思？写一下吧~</p>
+<div class="highlight-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="code"><pre><span class="line">= help: the trait `Debug` is not implemented for `rectangle`</span><br><span class="line">= note: add `#[derive(Debug)]` to `rectangle` or manually `impl Debug for rectangle`</span><br></pre></td></tr></table></figure></div>
+
+<p>被骗了，还是报错。但我们发现了另一个有意思的 trait—— <code>Debug</code> 。也就是说，Rust 对格式化的方法区分了两种，Debug 是专门面向开发者调试时的输出用格式。我超，什么是现代化语法啊（后仰）。这种特性真能派上不少用途。</p>
+<p>提示里说，要么添加<code> [derive(Debug)]</code> 要么自己实现一个 <code>Debug</code> 我们可以先添加一下这个试试</p>
+<div class="highlight-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="code"><pre><span class="line">#[derive(Debug)]</span><br><span class="line">struct rectangle&#123;</span><br><span class="line">  w: u32,</span><br><span class="line">  h: u32</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">fn main() &#123;</span><br><span class="line">  let rect = rectangle&#123;w: 10, h: 20&#125;;</span><br><span class="line">  println!(&quot;rectangle is &#123;:?&#125;&quot;, rect);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
+
+<p>添加在函数头，进行一个 <code>Debug</code> 注解就可以了，这次运行就不会报错了。我们来看看输出是怎样的</p>
+<div class="highlight-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="code"><pre><span class="line">rectangle is rectangle &#123; w: 10, h: 20 &#125;</span><br></pre></td></tr></table></figure></div>
+
+<p>可见 Rust 标准的 <code>Debug</code> 格式化输出就是 结构体名{所有字段名: 对应的值}，嗯，挺不错的，不用自己手动一个一个输出了。我们再来看看之前提示里提到的另一个 <code>&#123;:#?&#125;</code> 吧</p>
+<div class="highlight-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="code"><pre><span class="line">rectangle is rectangle &#123;</span><br><span class="line">    w: 10,</span><br><span class="line">    h: 20,</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
+
+<p>这个输出会更好看点，有了一定的排版，对于复杂的结构体会更有可读性。</p>
+<p>好，书上的 trait 介绍就到这里结束了（是不是把一开始的 <code>Format</code> 忘了），它说到第 10 章的时候会更详细的介绍 trait 的时候，可以通过像这种对结构体进行 trait 注解的方式提供很多功能，包括自带的，甚至可以自己自定义，确实期待。</p>
+<h1 id="方法"><a href="#方法" class="headerlink" title="方法"></a>方法</h1><p>结构体，或者说类，当然不能少了函数，书上对普通函数和结构体里的函数区分了一下概念，结构体内的函数叫方法，因为方法的定义有局限性，例如参数要有self，只能定义在结构体或trait之类的地方，属于是一个子集吧。我们也严谨点，区分一下吧。</p>
+<h2 id="定义"><a href="#定义" class="headerlink" title="定义"></a>定义</h2><div class="highlight-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="code"><pre><span class="line">#[derive(Debug)]</span><br><span class="line">struct Rectangle&#123;</span><br><span class="line">  w: u32,</span><br><span class="line">  h: u32</span><br><span class="line">&#125;</span><br><span class="line">impl Rectangle &#123;</span><br><span class="line">    fn area(&amp;self) -&gt; u32 &#123;</span><br><span class="line">       self.w * self.h</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">fn main() &#123;</span><br><span class="line">  let rect = Rectangle&#123;w: 10, h: 20&#125;;</span><br><span class="line">  println!(&quot;rectangle&#x27;s area is &#123;:#?&#125;&quot;, rect.area());</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
+
+<p>（吐槽：这里把 <code>rectangle</code> 的首字母大写了，因为 Rust 的编译器居然会警告我的命名不规范，牛）</p>
+<p>可以看见，方法和函数定义差不多，也是用 <code>fn</code> 来定义，指定哪个函数里的话倒是比较意外，居然不是写在 <code>Rectangle </code>定义的花括号里，而是另开一个 <code>impl Rectangle</code> 再来定义方法。另外，Rust 方法和 Python 也有点相似之处，也是通过 <code>self</code> 来指代当前实例，<code>self</code> 可以用三种方式来定义</p>
+<ol>
+<li><code>&amp;self</code> ：不可变引用，这个是最常见的，我们只要读取数据，什么也不干，所以不需要用到所有权，也最方便</li>
+<li><code>self</code>：获取所有权，应该最不常见，有时方法需要用来转换<code>self</code>类型的话，需要用到所有权，获取所有权后再进行返回；如果不返回的话，所有权在调用完方法就被回收了，实例就销毁了。</li>
+<li><code>&amp;mul self</code>：可变引用，也没什么好说的，就是有时要改变实例内字段的值时会用。</li>
+</ol>
+<p>然后书上介绍了 Rust 为什么没有 <code>-&gt;</code> 运算符的问题，我没太看懂，就简述一下我的理解，具体感兴趣可以自行看书或查阅资料。</p>
+<p>C++在对于一个指针类型的结构体变量里，需要对变量进行一次解引用，也就是 <code>ractangle-&gt;area()= (*rectangle).area()</code> 所以额外定义了一个 <code>-&gt;</code> 运算符写起来方便些。而 Rust 里，self的类型被显式定义了，所以编译器可以自动的根据你定义的 <code>self</code> 类型，去自动推理出 <code>self</code> 是否需要自动引用还是解引用，所以就不需要 <code>-&gt;</code> 运算符了。</p>
+<h2 id="关联函数"><a href="#关联函数" class="headerlink" title="关联函数"></a>关联函数</h2><p>在 <code>impl</code> 块里，除了带 <code>self</code> 的方法之外，Rust 还允许在块里定义不含 <code>self</code> 的函数，这些函数因为和结构体有关联，又不太需要 <code>self</code> 所以称为关联函数。和 Python 的 <code>@staticmethod</code> 差不多吧</p>
+<p>这里用一个定义函数来举例</p>
+<div class="highlight-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="code"><pre><span class="line">#[derive(Debug)]</span><br><span class="line">struct Rectangle&#123;</span><br><span class="line">  w: u32,</span><br><span class="line">  h: u32</span><br><span class="line">&#125;</span><br><span class="line">impl Rectangle &#123;</span><br><span class="line">    fn area(self) -&gt; u32 &#123;</span><br><span class="line">       self.w * self.h</span><br><span class="line">    &#125;</span><br><span class="line">    fn square(size: u32) -&gt; Rectangle &#123;</span><br><span class="line">       Rectangle &#123; w: size, h: size &#125;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">fn main() &#123;</span><br><span class="line">  let rect = Rectangle&#123;w: 10, h: 20&#125;;</span><br><span class="line">  println!(&quot;rectangle&#x27;s area is &#123;:#?&#125;&quot;, rect.area());</span><br><span class="line">  println!(&quot;rectangle is &#123;:#?&#125;&quot;, Rectangle::square(3));</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
+
+<p>使用也就是指定命名空间调用就可以了。</p>
+<h2 id="多个impl块"><a href="#多个impl块" class="headerlink" title="多个impl块"></a>多个impl块</h2><p>使用多个 impl 块也是合法的，可以编译通过。书上说后面会有应用场景介绍，那就后面再看吧，目前感觉还派不上用场？</p>
+<div class="highlight-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="code"><pre><span class="line">#[derive(Debug)]</span><br><span class="line">struct Rectangle&#123;</span><br><span class="line">  w: u32,</span><br><span class="line">  h: u32</span><br><span class="line">&#125;</span><br><span class="line">impl Rectangle &#123;</span><br><span class="line">    fn area(self) -&gt; u32 &#123;</span><br><span class="line">       self.w * self.h</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br><span class="line">impl Rectangle &#123;</span><br><span class="line">    fn square(size: u32) -&gt; Rectangle &#123;</span><br><span class="line">       Rectangle&#123;w: size, h: size&#125;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br><span class="line">    </span><br><span class="line"></span><br><span class="line">fn main() &#123;</span><br><span class="line">  let rect = Rectangle&#123;w: 10, h: 20&#125;;</span><br><span class="line">  println!(&quot;rectangle&#x27;s area is &#123;:#?&#125;&quot;, rect.area());</span><br><span class="line">  println!(&quot;rectangle is &#123;:#?&#125;&quot;, Rectangle::square(3));</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
+
+<hr>
+<p>本章到此结束！没什么好总结的，是比较基础的，也很重要的一部分，下一章继续干。</p>
+]]></content>
+      <tags>
+        <tag>Rust</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>【Rust学习记录】2. 猜数游戏——尝试代码编写</title>
+    <url>/2023/03/25/%E3%80%90Rust%E5%AD%A6%E4%B9%A0%E8%AE%B0%E5%BD%95%E3%80%912-%E7%8C%9C%E6%95%B0%E6%B8%B8%E6%88%8F%E2%80%94%E2%80%94%E5%B0%9D%E8%AF%95%E4%BB%A3%E7%A0%81%E7%BC%96%E5%86%99/</url>
+    <content><![CDATA[<h1 id="输入与输出的尝试"><a href="#输入与输出的尝试" class="headerlink" title="输入与输出的尝试"></a>输入与输出的尝试</h1><h2 id="创建项目"><a href="#创建项目" class="headerlink" title="创建项目"></a>创建项目</h2><div class="highlight-container" data-rel="Bash"><figure class="iseeu highlight bash"><table><tr><td class="code"><pre><span class="line">cargo new guess_game</span><br><span class="line"><span class="built_in">cd</span> .\guess_game\</span><br><span class="line">cargo run</span><br></pre></td></tr></table></figure></div>
+
+<p>就是之前介绍的，用 cargo 创建项目的步骤，run 成功了就表明没问题啦</p>
+<div class="highlight-container" data-rel="Rust"><figure class="iseeu highlight rust"><table><tr><td class="code"><pre><span class="line"><span class="keyword">use</span> std::io;</span><br><span class="line"></span><br><span class="line"><span class="keyword">fn</span> <span class="title function_">main</span>()&#123;</span><br><span class="line">    <span class="built_in">println!</span>(<span class="string">&quot;欢迎来玩猜数游戏！&quot;</span>);</span><br><span class="line">    <span class="built_in">println!</span>(<span class="string">&quot;输入一个数字：&quot;</span>);</span><br><span class="line">    <span class="keyword">let</span> <span class="keyword">mut </span><span class="variable">guess</span> = <span class="type">String</span>::<span class="title function_ invoke__">new</span>();</span><br><span class="line">    io::<span class="title function_ invoke__">stdin</span>().<span class="title function_ invoke__">read_line</span>(&amp;<span class="keyword">mut</span> guess).<span class="title function_ invoke__">expect</span>(<span class="string">&quot;读取输入失败！&quot;</span>);</span><br><span class="line">    <span class="built_in">println!</span>(<span class="string">&quot;你输入的数字是：&#123;&#125;&quot;</span>, guess);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
+
+<ul>
+<li><code>use</code>：就是 Rust 里的导入语句，这里的意思是导入 <code>std</code> 库里的 <code>io</code> 模块。</li>
+<li><code>let</code>：就是 Rust 里的定义语句，<code>let a = b;</code> 就是定义一个新的变量 <code>a</code>，值为 <code>b</code>。但值得一提的是，和其他所有程序都不一样，Rust 里直接定义的变量都是 <code>const</code> 常量，不可变！需要用 <code>mut</code> 关键词声明这个变量是可变的变量。</li>
+<li><code>string::new()</code>：没什么好说的，<code>new</code> 了一个 <code>String</code> 类型，是空白的字符串。</li>
+<li><code>io::stdin().read_line(&amp;mut guess)</code>：也就是调用 <code>io</code> 模块里的 <code>stdin</code> 实例的 <code>read_line</code> 函数，如果没有写 <code>use</code>，也可以用 <code>std::io::stdin</code> 表示，<code>&amp;</code> 和 C++ 里一样，是引用的概念，也就是说，定义了一个新的引用，和上面的 <code>guess</code> 指向同一个地址，用来接输入。</li>
+<li><code>.expect</code> 就是异常处理语句，在执行完 <code>read_line</code> 后，会返回一个 <code>Result</code> 类型的值，通常是一个枚举类型，<code>Ok</code> 和 <code>Err</code> 两个值，<code>Ok</code> 就是执行成功，并且附带代码产生的结果值，这里就是输入的字节数；<code>Err</code> 就是执行错误，附带错误原因。用 <code>expect</code> 就可以很方便地处理异常，而不用再写各 if-else。</li>
+<li>值得一提的是，不写 <code>expect</code> 的话，虽然能编译通过，但 Rust 会提示你有个地方没处理异常，就像这样：</li>
+</ul>
+<p><img  
+                     lazyload
+                     src="/images/loading.svg"
+                     data-src="/images/Snipaste_2023-03-24_23-15-36.jpg"
+                      alt="img"
+                ></p>
+<p>（听说有人不喜欢写异常处理是吧）</p>
+<p>最后一句，就是标准的格式化花括号占位输出，没什么好说的。</p>
+<h1 id="引入第三方包的尝试"><a href="#引入第三方包的尝试" class="headerlink" title="引入第三方包的尝试"></a>引入第三方包的尝试</h1><h2 id="声明依赖"><a href="#声明依赖" class="headerlink" title="声明依赖"></a>声明依赖</h2><p>一般语言的标准库都有生成随机数的函数，但rust没有。所以我们需要引入rust官方提供的一个随机数包——rand</p>
+<p>打开Cargo.toml文件，在dependencies后面添加rand包。</p>
+<div class="highlight-container" data-rel="Toml"><figure class="iseeu highlight toml"><table><tr><td class="code"><pre><span class="line"><span class="section">[package]</span></span><br><span class="line"><span class="attr">name</span> = <span class="string">&quot;guess_game&quot;</span></span><br><span class="line"><span class="attr">version</span> = <span class="string">&quot;0.1.0&quot;</span></span><br><span class="line"><span class="attr">edition</span> = <span class="string">&quot;2021&quot;</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html</span></span><br><span class="line"></span><br><span class="line"><span class="section">[dependencies]</span></span><br><span class="line"><span class="attr">rand</span> = <span class="string">&quot;0.3.14&quot;</span></span><br></pre></td></tr></table></figure></div>
+
+<p>0.3.14版本就是版本号。</p>
+<p>然后再build一次项目，cargo就会自动帮你搜索包以及对应的并下载了，包的信息一般是从 crates.io 获取</p>
+<h2 id="cargo-lock和cargo-update"><a href="#cargo-lock和cargo-update" class="headerlink" title="cargo.lock和cargo update"></a>cargo.lock和cargo update</h2><p>cargo引入了一个独特的机制来保证依赖的版本问题，让所有人在构建这个项目的时候都得到相同的结果。你第一次构建项目的时候，cargo就会遍历我们声明的依赖以及版本号，把它写到 lock 文件里，后面再构建的时候，就会都使用这个版本的依赖了，除非手动升级到其他版本。</p>
+<p>如果实在想升级，使用 <code>cargo update</code> 命令就会无视 lock 强行升级依赖</p>
+<h1 id="使用match进行分支控制的尝试"><a href="#使用match进行分支控制的尝试" class="headerlink" title="使用match进行分支控制的尝试"></a>使用match进行分支控制的尝试</h1><p>rust提供了match语法来进行更简洁的分支控制。</p>
+<div class="highlight-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="code"><pre><span class="line">use std::io;</span><br><span class="line">use std::cmp::Ordering;</span><br><span class="line">use rand::Rng;</span><br><span class="line">fn main()&#123;</span><br><span class="line">    println!(&quot;欢迎来玩猜数游戏！&quot;);</span><br><span class="line">    let secret_number = rand::thread_rng().gen_range(1, 101);</span><br><span class="line">    println!(&quot;正确答案是:&#123;&#125;&quot;, secret_number);</span><br><span class="line">    println!(&quot;输入一个数字：&quot;);</span><br><span class="line">    let mut guess = String::new();</span><br><span class="line">    io::stdin().read_line(&amp;mut guess)</span><br><span class="line">        .expect(&quot;读取输入失败！&quot;);</span><br><span class="line">    let guess: i32 = guess.trim().parse()</span><br><span class="line">        .expect(&quot;请输入正确的数字！&quot;);</span><br><span class="line">    match guess.cmp(&amp;secret_number)&#123;</span><br><span class="line">        Ordering::Less =&gt; &#123;</span><br><span class="line">            println!(&quot;猜小啦&quot;);</span><br><span class="line">            println!(&quot;再猜一次：&quot;);</span><br><span class="line">        &#125;,</span><br><span class="line">        Ordering::Greater =&gt; println!(&quot;猜大啦&quot;),</span><br><span class="line">        Ordering::Equal =&gt; println!(&quot;猜对啦&quot;),</span><br><span class="line">        Other =&gt; println!(&quot;猜错啦&quot;),</span><br><span class="line">    &#125;</span><br><span class="line">    println!(&quot;你输入的数字是：&#123;&#125;&quot;, guess);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
+
+<p>这段代码里：</p>
+<ul>
+<li><code>use</code> 了一个 <code>Ordering</code> 的模块，这个模块提供了顺序对应的枚举类型，也就是 <code>Less</code>, <code>Greater</code>, <code>Equal</code></li>
+<li><code>trim().parse()</code> 语句用来作类型转换，因为 <code>gen_range</code> 生成的 <code>secret_number</code> 是 <code>i32</code> 类型，无法直接与输入的字符串进行比较，所以作了一个类型转换；其中 <code>trim()</code> 就是去掉首尾多余的字符，空格换行什么的；<code>parse()</code> 是用于将字符串解析为对应数值类型的方法，同样也会抛出 <code>Result</code> 可以用于异常处理</li>
+<li><code>match guess.cmp</code>：就是通过 <code>match</code> 语法进行分支控制，把 <code>guess.cmp()</code> 的结果丢到下面去匹配，匹配到什么就执行什么的语句。其中 <code>cmp</code> 返回的就是 <code>Ordering</code> 这个枚举类型。实际中，这个枚举类型也可以自己定义，方便自己的分支控制。传统的 <code>if-else</code> 也能实现这个逻辑就是。</li>
+</ul>
+<p>PS：大概了解了一下 <code>if-else</code> 和 <code>match</code> 的比较，两者应该主要是在可读性上的区别比较明显。</p>
+<p>在可读性上，<code>if-else</code> 只接受 bool 值的二类判断。当有复杂条件的时候，就需要多层嵌套 <code>if-else</code> 比较难看。相对的，<code>match</code> 可以自定义枚举类型，在多类判断的时候，写法也更简洁，可读性更佳。当然，二类判断当属 <code>if-else</code>。</p>
+<p>在性能上，当匹配的模式非常多的情况下，<code>match</code> 可以在编译时就完成判断，而 <code>if-else</code> 是在运行的时候完成判断，在极端的情况下，<code>match</code> 的性能会更佳（但我觉得在这种语句上纠性能的意义并不大）。</p>
+<p>另外了解了一下，<code>if-else</code> 的语法和 C++ 基本一样，就不另外写了，书上目前也没有介绍 <code>if-else</code>。</p>
+<h1 id="循环的尝试"><a href="#循环的尝试" class="headerlink" title="循环的尝试"></a>循环的尝试</h1><div class="highlight-container" data-rel="Rust"><figure class="iseeu highlight rust"><table><tr><td class="code"><pre><span class="line"><span class="keyword">use</span> std::io;</span><br><span class="line"><span class="keyword">use</span> std::cmp::Ordering;</span><br><span class="line"><span class="keyword">use</span> rand::Rng;</span><br><span class="line"><span class="keyword">fn</span> <span class="title function_">main</span>()&#123;</span><br><span class="line">    <span class="built_in">println!</span>(<span class="string">&quot;欢迎来玩猜数游戏！&quot;</span>);</span><br><span class="line">    <span class="keyword">let</span> <span class="variable">secret_number</span> = rand::<span class="title function_ invoke__">thread_rng</span>().<span class="title function_ invoke__">gen_range</span>(<span class="number">1</span>, <span class="number">101</span>);</span><br><span class="line">    <span class="built_in">println!</span>(<span class="string">&quot;正确答案是:&#123;&#125;&quot;</span>, secret_number);</span><br><span class="line">    <span class="keyword">loop</span>&#123;</span><br><span class="line">        <span class="built_in">println!</span>(<span class="string">&quot;输入一个数字：&quot;</span>);</span><br><span class="line">        <span class="keyword">let</span> <span class="keyword">mut </span><span class="variable">guess</span> = <span class="type">String</span>::<span class="title function_ invoke__">new</span>();</span><br><span class="line">        io::<span class="title function_ invoke__">stdin</span>().<span class="title function_ invoke__">read_line</span>(&amp;<span class="keyword">mut</span> guess)</span><br><span class="line">        .<span class="title function_ invoke__">expect</span>(<span class="string">&quot;读取输入失败！&quot;</span>);</span><br><span class="line">        <span class="built_in">println!</span>(<span class="string">&quot;你输入的数字是：&#123;&#125;&quot;</span>, guess);</span><br><span class="line">        <span class="keyword">let</span> <span class="variable">guess</span>: <span class="type">i32</span> = guess.<span class="title function_ invoke__">trim</span>().<span class="title function_ invoke__">parse</span>()</span><br><span class="line">            .<span class="title function_ invoke__">expect</span>(<span class="string">&quot;请输入正确的数字！&quot;</span>);</span><br><span class="line">        <span class="keyword">match</span> guess.<span class="title function_ invoke__">cmp</span>(&amp;secret_number)&#123;</span><br><span class="line">            Ordering::Less =&gt; &#123;</span><br><span class="line">                <span class="built_in">println!</span>(<span class="string">&quot;猜小啦&quot;</span>);</span><br><span class="line">                <span class="built_in">println!</span>(<span class="string">&quot;再猜一次：&quot;</span>);</span><br><span class="line">            &#125;,</span><br><span class="line">            Ordering::Greater =&gt; &#123;</span><br><span class="line">                <span class="built_in">println!</span>(<span class="string">&quot;猜大啦&quot;</span>);</span><br><span class="line">                <span class="built_in">println!</span>(<span class="string">&quot;再猜一次：&quot;</span>);</span><br><span class="line">            &#125;,</span><br><span class="line">            Ordering::Equal =&gt; &#123;</span><br><span class="line">                <span class="built_in">println!</span>(<span class="string">&quot;猜对啦&quot;</span>);</span><br><span class="line">                <span class="keyword">break</span>;</span><br><span class="line">            &#125;</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
+
+<p>想使用一个 <code>while True</code> 循环也很简单，在 Rust 里就是一个 <code>loop</code> 语法，外带 <code>break</code>，没什么多说的，这里注意定义 <code>guess</code> 变量要在 <code>loop</code> 里，不然 <code>read_line</code> 会不断的在 <code>guess</code> 后面添加字符，就会导致无法转换成数字，报错退出。</p>
+<p>那么在循环里有一个问题就很明显了，那就是 <code>expect</code> 语句不是我所理解常规的 <code>try-catch</code> 异常处理语句，它并没有捕获+后处理的步骤，所以它是会导致程序报错退出的。</p>
+<p>那怎么来进行异常处理呢？之前也说过，<code>Result</code> 返回的是一个枚举类型 <code>Ok</code> 和 <code>Err</code>。那不就是，用 <code>match</code> 来处理就完了嘛？~</p>
+<div class="highlight-container" data-rel="Rust"><figure class="iseeu highlight rust"><table><tr><td class="code"><pre><span class="line"><span class="keyword">use</span> std::io;</span><br><span class="line"><span class="keyword">use</span> std::cmp::Ordering;</span><br><span class="line"><span class="keyword">use</span> rand::Rng;</span><br><span class="line"><span class="keyword">fn</span> <span class="title function_">main</span>()&#123;</span><br><span class="line">    <span class="built_in">println!</span>(<span class="string">&quot;欢迎来玩猜数游戏！&quot;</span>);</span><br><span class="line">    <span class="keyword">let</span> <span class="variable">secret_number</span> = rand::<span class="title function_ invoke__">thread_rng</span>().<span class="title function_ invoke__">gen_range</span>(<span class="number">1</span>, <span class="number">101</span>);</span><br><span class="line">    <span class="built_in">println!</span>(<span class="string">&quot;正确答案是:&#123;&#125;&quot;</span>, secret_number);</span><br><span class="line">    <span class="keyword">loop</span>&#123;</span><br><span class="line">        <span class="built_in">println!</span>(<span class="string">&quot;输入一个数字：&quot;</span>);</span><br><span class="line">        <span class="keyword">let</span> <span class="keyword">mut </span><span class="variable">guess</span> = <span class="type">String</span>::<span class="title function_ invoke__">new</span>();</span><br><span class="line">        io::<span class="title function_ invoke__">stdin</span>().<span class="title function_ invoke__">read_line</span>(&amp;<span class="keyword">mut</span> guess)</span><br><span class="line">        .<span class="title function_ invoke__">expect</span>(<span class="string">&quot;读取输入失败！&quot;</span>);</span><br><span class="line">        <span class="built_in">println!</span>(<span class="string">&quot;你输入的数字是：&#123;&#125;&quot;</span>, guess);</span><br><span class="line">        <span class="keyword">let</span> <span class="variable">guess</span>: <span class="type">i32</span> = <span class="keyword">match</span> guess.<span class="title function_ invoke__">trim</span>().<span class="title function_ invoke__">parse</span>()&#123;</span><br><span class="line">            <span class="title function_ invoke__">Ok</span>(num) =&gt; num,</span><br><span class="line">            <span class="title function_ invoke__">Err</span>(_) =&gt; &#123;</span><br><span class="line">                <span class="built_in">println!</span>(<span class="string">&quot;请输入一个正确的数字！&quot;</span>);</span><br><span class="line">                <span class="keyword">continue</span>;</span><br><span class="line">            &#125;</span><br><span class="line">        &#125;;</span><br><span class="line">        <span class="keyword">match</span> guess.<span class="title function_ invoke__">cmp</span>(&amp;secret_number)&#123;</span><br><span class="line">            Ordering::Less =&gt; &#123;</span><br><span class="line">                <span class="built_in">println!</span>(<span class="string">&quot;猜小啦&quot;</span>);</span><br><span class="line">                <span class="built_in">println!</span>(<span class="string">&quot;再猜一次：&quot;</span>);</span><br><span class="line">            &#125;,</span><br><span class="line">            Ordering::Greater =&gt; &#123;</span><br><span class="line">                <span class="built_in">println!</span>(<span class="string">&quot;猜大啦&quot;</span>);</span><br><span class="line">                <span class="built_in">println!</span>(<span class="string">&quot;再猜一次：&quot;</span>);</span><br><span class="line">            &#125;,</span><br><span class="line">            Ordering::Equal =&gt; &#123;</span><br><span class="line">                <span class="built_in">println!</span>(<span class="string">&quot;猜对啦&quot;</span>);</span><br><span class="line">                <span class="keyword">break</span>;</span><br><span class="line">            &#125;</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
+
+<p>修改后的代码是这样的，我们用 <code>match</code> 来处理 <code>parse()</code> 的返回值，之前也说过，<code>Ok</code> 会附带执行成功的值，所以 <code>Ok(num)</code> 表示，用 <code>num</code> 来匹配 <code>Ok</code> 里面带的成功的返回值，<code>=&gt;</code> 表示返回 <code>num</code> 值；<code>Err(_)</code> 就是表示，用 <code>_</code> 来匹配错误信息，因为不需要用，所以用 <code>_</code> 就完了，然后执行错误处理，输出+继续输入；值得一提的是这里好像说明了 Rust 的函数返回机制，好像不需要写 <code>return</code>，直接一个变量名就是返回了。</p>
+<p>OK，到目前为止，初步的编程尝试已经结束了，看了下后面的章节介绍，应该会是更结构化的东西。</p>
+]]></content>
+      <tags>
+        <tag>Rust</tag>
+      </tags>
+  </entry>
+  <entry>
     <title>【Rust学习记录】3. 通用编程概念</title>
     <url>/2023/03/25/%E3%80%90Rust%E5%AD%A6%E4%B9%A0%E8%AE%B0%E5%BD%95%E3%80%913-%E9%80%9A%E7%94%A8%E7%BC%96%E7%A8%8B%E6%A6%82%E5%BF%B5/</url>
     <content><![CDATA[<h1 id="变量，可变性，隐藏，常量"><a href="#变量，可变性，隐藏，常量" class="headerlink" title="变量，可变性，隐藏，常量"></a>变量，可变性，隐藏，常量</h1><p>这部分的内容基本都在前面了解过了，大致就是一下内容</p>
@@ -1588,65 +1647,6 @@
 <p><code>0..4</code> 确实有点惊到我，抽象程度还挺高。</p>
 <hr>
 <p>至此，第三章基本概念结束！这章里面，虽然基本知识很多，但也有不少Rust独特之处，挺惊喜的，可以看到很多地方有些和 python 的相似程度，在保证和 c++ 差不多效率的情况下，在一些语法简洁方面向python看齐（例如自动推导类型），处处都体现着，这确实是一个很现代化的语言。</p>
-]]></content>
-      <tags>
-        <tag>Rust</tag>
-      </tags>
-  </entry>
-  <entry>
-    <title>【Rust学习记录】2. 猜数游戏——尝试代码编写</title>
-    <url>/2023/03/25/%E3%80%90Rust%E5%AD%A6%E4%B9%A0%E8%AE%B0%E5%BD%95%E3%80%912-%E7%8C%9C%E6%95%B0%E6%B8%B8%E6%88%8F%E2%80%94%E2%80%94%E5%B0%9D%E8%AF%95%E4%BB%A3%E7%A0%81%E7%BC%96%E5%86%99/</url>
-    <content><![CDATA[<h1 id="输入与输出的尝试"><a href="#输入与输出的尝试" class="headerlink" title="输入与输出的尝试"></a>输入与输出的尝试</h1><h2 id="创建项目"><a href="#创建项目" class="headerlink" title="创建项目"></a>创建项目</h2><div class="highlight-container" data-rel="Bash"><figure class="iseeu highlight bash"><table><tr><td class="code"><pre><span class="line">cargo new guess_game</span><br><span class="line"><span class="built_in">cd</span> .\guess_game\</span><br><span class="line">cargo run</span><br></pre></td></tr></table></figure></div>
-
-<p>就是之前介绍的，用 cargo 创建项目的步骤，run 成功了就表明没问题啦</p>
-<div class="highlight-container" data-rel="Rust"><figure class="iseeu highlight rust"><table><tr><td class="code"><pre><span class="line"><span class="keyword">use</span> std::io;</span><br><span class="line"></span><br><span class="line"><span class="keyword">fn</span> <span class="title function_">main</span>()&#123;</span><br><span class="line">    <span class="built_in">println!</span>(<span class="string">&quot;欢迎来玩猜数游戏！&quot;</span>);</span><br><span class="line">    <span class="built_in">println!</span>(<span class="string">&quot;输入一个数字：&quot;</span>);</span><br><span class="line">    <span class="keyword">let</span> <span class="keyword">mut </span><span class="variable">guess</span> = <span class="type">String</span>::<span class="title function_ invoke__">new</span>();</span><br><span class="line">    io::<span class="title function_ invoke__">stdin</span>().<span class="title function_ invoke__">read_line</span>(&amp;<span class="keyword">mut</span> guess).<span class="title function_ invoke__">expect</span>(<span class="string">&quot;读取输入失败！&quot;</span>);</span><br><span class="line">    <span class="built_in">println!</span>(<span class="string">&quot;你输入的数字是：&#123;&#125;&quot;</span>, guess);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
-
-<ul>
-<li><code>use</code>：就是 Rust 里的导入语句，这里的意思是导入 <code>std</code> 库里的 <code>io</code> 模块。</li>
-<li><code>let</code>：就是 Rust 里的定义语句，<code>let a = b;</code> 就是定义一个新的变量 <code>a</code>，值为 <code>b</code>。但值得一提的是，和其他所有程序都不一样，Rust 里直接定义的变量都是 <code>const</code> 常量，不可变！需要用 <code>mut</code> 关键词声明这个变量是可变的变量。</li>
-<li><code>string::new()</code>：没什么好说的，<code>new</code> 了一个 <code>String</code> 类型，是空白的字符串。</li>
-<li><code>io::stdin().read_line(&amp;mut guess)</code>：也就是调用 <code>io</code> 模块里的 <code>stdin</code> 实例的 <code>read_line</code> 函数，如果没有写 <code>use</code>，也可以用 <code>std::io::stdin</code> 表示，<code>&amp;</code> 和 C++ 里一样，是引用的概念，也就是说，定义了一个新的引用，和上面的 <code>guess</code> 指向同一个地址，用来接输入。</li>
-<li><code>.expect</code> 就是异常处理语句，在执行完 <code>read_line</code> 后，会返回一个 <code>Result</code> 类型的值，通常是一个枚举类型，<code>Ok</code> 和 <code>Err</code> 两个值，<code>Ok</code> 就是执行成功，并且附带代码产生的结果值，这里就是输入的字节数；<code>Err</code> 就是执行错误，附带错误原因。用 <code>expect</code> 就可以很方便地处理异常，而不用再写各 if-else。</li>
-<li>值得一提的是，不写 <code>expect</code> 的话，虽然能编译通过，但 Rust 会提示你有个地方没处理异常，就像这样：</li>
-</ul>
-<p><img  
-                     lazyload
-                     src="/images/loading.svg"
-                     data-src="/images/Snipaste_2023-03-24_23-15-36.jpg"
-                      alt="img"
-                ></p>
-<p>（听说有人不喜欢写异常处理是吧）</p>
-<p>最后一句，就是标准的格式化花括号占位输出，没什么好说的。</p>
-<h1 id="引入第三方包的尝试"><a href="#引入第三方包的尝试" class="headerlink" title="引入第三方包的尝试"></a>引入第三方包的尝试</h1><h2 id="声明依赖"><a href="#声明依赖" class="headerlink" title="声明依赖"></a>声明依赖</h2><p>一般语言的标准库都有生成随机数的函数，但rust没有。所以我们需要引入rust官方提供的一个随机数包——rand</p>
-<p>打开Cargo.toml文件，在dependencies后面添加rand包。</p>
-<div class="highlight-container" data-rel="Toml"><figure class="iseeu highlight toml"><table><tr><td class="code"><pre><span class="line"><span class="section">[package]</span></span><br><span class="line"><span class="attr">name</span> = <span class="string">&quot;guess_game&quot;</span></span><br><span class="line"><span class="attr">version</span> = <span class="string">&quot;0.1.0&quot;</span></span><br><span class="line"><span class="attr">edition</span> = <span class="string">&quot;2021&quot;</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html</span></span><br><span class="line"></span><br><span class="line"><span class="section">[dependencies]</span></span><br><span class="line"><span class="attr">rand</span> = <span class="string">&quot;0.3.14&quot;</span></span><br></pre></td></tr></table></figure></div>
-
-<p>0.3.14版本就是版本号。</p>
-<p>然后再build一次项目，cargo就会自动帮你搜索包以及对应的并下载了，包的信息一般是从 crates.io 获取</p>
-<h2 id="cargo-lock和cargo-update"><a href="#cargo-lock和cargo-update" class="headerlink" title="cargo.lock和cargo update"></a>cargo.lock和cargo update</h2><p>cargo引入了一个独特的机制来保证依赖的版本问题，让所有人在构建这个项目的时候都得到相同的结果。你第一次构建项目的时候，cargo就会遍历我们声明的依赖以及版本号，把它写到 lock 文件里，后面再构建的时候，就会都使用这个版本的依赖了，除非手动升级到其他版本。</p>
-<p>如果实在想升级，使用 <code>cargo update</code> 命令就会无视 lock 强行升级依赖</p>
-<h1 id="使用match进行分支控制的尝试"><a href="#使用match进行分支控制的尝试" class="headerlink" title="使用match进行分支控制的尝试"></a>使用match进行分支控制的尝试</h1><p>rust提供了match语法来进行更简洁的分支控制。</p>
-<div class="highlight-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="code"><pre><span class="line">use std::io;</span><br><span class="line">use std::cmp::Ordering;</span><br><span class="line">use rand::Rng;</span><br><span class="line">fn main()&#123;</span><br><span class="line">    println!(&quot;欢迎来玩猜数游戏！&quot;);</span><br><span class="line">    let secret_number = rand::thread_rng().gen_range(1, 101);</span><br><span class="line">    println!(&quot;正确答案是:&#123;&#125;&quot;, secret_number);</span><br><span class="line">    println!(&quot;输入一个数字：&quot;);</span><br><span class="line">    let mut guess = String::new();</span><br><span class="line">    io::stdin().read_line(&amp;mut guess)</span><br><span class="line">        .expect(&quot;读取输入失败！&quot;);</span><br><span class="line">    let guess: i32 = guess.trim().parse()</span><br><span class="line">        .expect(&quot;请输入正确的数字！&quot;);</span><br><span class="line">    match guess.cmp(&amp;secret_number)&#123;</span><br><span class="line">        Ordering::Less =&gt; &#123;</span><br><span class="line">            println!(&quot;猜小啦&quot;);</span><br><span class="line">            println!(&quot;再猜一次：&quot;);</span><br><span class="line">        &#125;,</span><br><span class="line">        Ordering::Greater =&gt; println!(&quot;猜大啦&quot;),</span><br><span class="line">        Ordering::Equal =&gt; println!(&quot;猜对啦&quot;),</span><br><span class="line">        Other =&gt; println!(&quot;猜错啦&quot;),</span><br><span class="line">    &#125;</span><br><span class="line">    println!(&quot;你输入的数字是：&#123;&#125;&quot;, guess);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
-
-<p>这段代码里：</p>
-<ul>
-<li><code>use</code> 了一个 <code>Ordering</code> 的模块，这个模块提供了顺序对应的枚举类型，也就是 <code>Less</code>, <code>Greater</code>, <code>Equal</code></li>
-<li><code>trim().parse()</code> 语句用来作类型转换，因为 <code>gen_range</code> 生成的 <code>secret_number</code> 是 <code>i32</code> 类型，无法直接与输入的字符串进行比较，所以作了一个类型转换；其中 <code>trim()</code> 就是去掉首尾多余的字符，空格换行什么的；<code>parse()</code> 是用于将字符串解析为对应数值类型的方法，同样也会抛出 <code>Result</code> 可以用于异常处理</li>
-<li><code>match guess.cmp</code>：就是通过 <code>match</code> 语法进行分支控制，把 <code>guess.cmp()</code> 的结果丢到下面去匹配，匹配到什么就执行什么的语句。其中 <code>cmp</code> 返回的就是 <code>Ordering</code> 这个枚举类型。实际中，这个枚举类型也可以自己定义，方便自己的分支控制。传统的 <code>if-else</code> 也能实现这个逻辑就是。</li>
-</ul>
-<p>PS：大概了解了一下 <code>if-else</code> 和 <code>match</code> 的比较，两者应该主要是在可读性上的区别比较明显。</p>
-<p>在可读性上，<code>if-else</code> 只接受 bool 值的二类判断。当有复杂条件的时候，就需要多层嵌套 <code>if-else</code> 比较难看。相对的，<code>match</code> 可以自定义枚举类型，在多类判断的时候，写法也更简洁，可读性更佳。当然，二类判断当属 <code>if-else</code>。</p>
-<p>在性能上，当匹配的模式非常多的情况下，<code>match</code> 可以在编译时就完成判断，而 <code>if-else</code> 是在运行的时候完成判断，在极端的情况下，<code>match</code> 的性能会更佳（但我觉得在这种语句上纠性能的意义并不大）。</p>
-<p>另外了解了一下，<code>if-else</code> 的语法和 C++ 基本一样，就不另外写了，书上目前也没有介绍 <code>if-else</code>。</p>
-<h1 id="循环的尝试"><a href="#循环的尝试" class="headerlink" title="循环的尝试"></a>循环的尝试</h1><div class="highlight-container" data-rel="Rust"><figure class="iseeu highlight rust"><table><tr><td class="code"><pre><span class="line"><span class="keyword">use</span> std::io;</span><br><span class="line"><span class="keyword">use</span> std::cmp::Ordering;</span><br><span class="line"><span class="keyword">use</span> rand::Rng;</span><br><span class="line"><span class="keyword">fn</span> <span class="title function_">main</span>()&#123;</span><br><span class="line">    <span class="built_in">println!</span>(<span class="string">&quot;欢迎来玩猜数游戏！&quot;</span>);</span><br><span class="line">    <span class="keyword">let</span> <span class="variable">secret_number</span> = rand::<span class="title function_ invoke__">thread_rng</span>().<span class="title function_ invoke__">gen_range</span>(<span class="number">1</span>, <span class="number">101</span>);</span><br><span class="line">    <span class="built_in">println!</span>(<span class="string">&quot;正确答案是:&#123;&#125;&quot;</span>, secret_number);</span><br><span class="line">    <span class="keyword">loop</span>&#123;</span><br><span class="line">        <span class="built_in">println!</span>(<span class="string">&quot;输入一个数字：&quot;</span>);</span><br><span class="line">        <span class="keyword">let</span> <span class="keyword">mut </span><span class="variable">guess</span> = <span class="type">String</span>::<span class="title function_ invoke__">new</span>();</span><br><span class="line">        io::<span class="title function_ invoke__">stdin</span>().<span class="title function_ invoke__">read_line</span>(&amp;<span class="keyword">mut</span> guess)</span><br><span class="line">        .<span class="title function_ invoke__">expect</span>(<span class="string">&quot;读取输入失败！&quot;</span>);</span><br><span class="line">        <span class="built_in">println!</span>(<span class="string">&quot;你输入的数字是：&#123;&#125;&quot;</span>, guess);</span><br><span class="line">        <span class="keyword">let</span> <span class="variable">guess</span>: <span class="type">i32</span> = guess.<span class="title function_ invoke__">trim</span>().<span class="title function_ invoke__">parse</span>()</span><br><span class="line">            .<span class="title function_ invoke__">expect</span>(<span class="string">&quot;请输入正确的数字！&quot;</span>);</span><br><span class="line">        <span class="keyword">match</span> guess.<span class="title function_ invoke__">cmp</span>(&amp;secret_number)&#123;</span><br><span class="line">            Ordering::Less =&gt; &#123;</span><br><span class="line">                <span class="built_in">println!</span>(<span class="string">&quot;猜小啦&quot;</span>);</span><br><span class="line">                <span class="built_in">println!</span>(<span class="string">&quot;再猜一次：&quot;</span>);</span><br><span class="line">            &#125;,</span><br><span class="line">            Ordering::Greater =&gt; &#123;</span><br><span class="line">                <span class="built_in">println!</span>(<span class="string">&quot;猜大啦&quot;</span>);</span><br><span class="line">                <span class="built_in">println!</span>(<span class="string">&quot;再猜一次：&quot;</span>);</span><br><span class="line">            &#125;,</span><br><span class="line">            Ordering::Equal =&gt; &#123;</span><br><span class="line">                <span class="built_in">println!</span>(<span class="string">&quot;猜对啦&quot;</span>);</span><br><span class="line">                <span class="keyword">break</span>;</span><br><span class="line">            &#125;</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
-
-<p>想使用一个 <code>while True</code> 循环也很简单，在 Rust 里就是一个 <code>loop</code> 语法，外带 <code>break</code>，没什么多说的，这里注意定义 <code>guess</code> 变量要在 <code>loop</code> 里，不然 <code>read_line</code> 会不断的在 <code>guess</code> 后面添加字符，就会导致无法转换成数字，报错退出。</p>
-<p>那么在循环里有一个问题就很明显了，那就是 <code>expect</code> 语句不是我所理解常规的 <code>try-catch</code> 异常处理语句，它并没有捕获+后处理的步骤，所以它是会导致程序报错退出的。</p>
-<p>那怎么来进行异常处理呢？之前也说过，<code>Result</code> 返回的是一个枚举类型 <code>Ok</code> 和 <code>Err</code>。那不就是，用 <code>match</code> 来处理就完了嘛？~</p>
-<div class="highlight-container" data-rel="Rust"><figure class="iseeu highlight rust"><table><tr><td class="code"><pre><span class="line"><span class="keyword">use</span> std::io;</span><br><span class="line"><span class="keyword">use</span> std::cmp::Ordering;</span><br><span class="line"><span class="keyword">use</span> rand::Rng;</span><br><span class="line"><span class="keyword">fn</span> <span class="title function_">main</span>()&#123;</span><br><span class="line">    <span class="built_in">println!</span>(<span class="string">&quot;欢迎来玩猜数游戏！&quot;</span>);</span><br><span class="line">    <span class="keyword">let</span> <span class="variable">secret_number</span> = rand::<span class="title function_ invoke__">thread_rng</span>().<span class="title function_ invoke__">gen_range</span>(<span class="number">1</span>, <span class="number">101</span>);</span><br><span class="line">    <span class="built_in">println!</span>(<span class="string">&quot;正确答案是:&#123;&#125;&quot;</span>, secret_number);</span><br><span class="line">    <span class="keyword">loop</span>&#123;</span><br><span class="line">        <span class="built_in">println!</span>(<span class="string">&quot;输入一个数字：&quot;</span>);</span><br><span class="line">        <span class="keyword">let</span> <span class="keyword">mut </span><span class="variable">guess</span> = <span class="type">String</span>::<span class="title function_ invoke__">new</span>();</span><br><span class="line">        io::<span class="title function_ invoke__">stdin</span>().<span class="title function_ invoke__">read_line</span>(&amp;<span class="keyword">mut</span> guess)</span><br><span class="line">        .<span class="title function_ invoke__">expect</span>(<span class="string">&quot;读取输入失败！&quot;</span>);</span><br><span class="line">        <span class="built_in">println!</span>(<span class="string">&quot;你输入的数字是：&#123;&#125;&quot;</span>, guess);</span><br><span class="line">        <span class="keyword">let</span> <span class="variable">guess</span>: <span class="type">i32</span> = <span class="keyword">match</span> guess.<span class="title function_ invoke__">trim</span>().<span class="title function_ invoke__">parse</span>()&#123;</span><br><span class="line">            <span class="title function_ invoke__">Ok</span>(num) =&gt; num,</span><br><span class="line">            <span class="title function_ invoke__">Err</span>(_) =&gt; &#123;</span><br><span class="line">                <span class="built_in">println!</span>(<span class="string">&quot;请输入一个正确的数字！&quot;</span>);</span><br><span class="line">                <span class="keyword">continue</span>;</span><br><span class="line">            &#125;</span><br><span class="line">        &#125;;</span><br><span class="line">        <span class="keyword">match</span> guess.<span class="title function_ invoke__">cmp</span>(&amp;secret_number)&#123;</span><br><span class="line">            Ordering::Less =&gt; &#123;</span><br><span class="line">                <span class="built_in">println!</span>(<span class="string">&quot;猜小啦&quot;</span>);</span><br><span class="line">                <span class="built_in">println!</span>(<span class="string">&quot;再猜一次：&quot;</span>);</span><br><span class="line">            &#125;,</span><br><span class="line">            Ordering::Greater =&gt; &#123;</span><br><span class="line">                <span class="built_in">println!</span>(<span class="string">&quot;猜大啦&quot;</span>);</span><br><span class="line">                <span class="built_in">println!</span>(<span class="string">&quot;再猜一次：&quot;</span>);</span><br><span class="line">            &#125;,</span><br><span class="line">            Ordering::Equal =&gt; &#123;</span><br><span class="line">                <span class="built_in">println!</span>(<span class="string">&quot;猜对啦&quot;</span>);</span><br><span class="line">                <span class="keyword">break</span>;</span><br><span class="line">            &#125;</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
-
-<p>修改后的代码是这样的，我们用 <code>match</code> 来处理 <code>parse()</code> 的返回值，之前也说过，<code>Ok</code> 会附带执行成功的值，所以 <code>Ok(num)</code> 表示，用 <code>num</code> 来匹配 <code>Ok</code> 里面带的成功的返回值，<code>=&gt;</code> 表示返回 <code>num</code> 值；<code>Err(_)</code> 就是表示，用 <code>_</code> 来匹配错误信息，因为不需要用，所以用 <code>_</code> 就完了，然后执行错误处理，输出+继续输入；值得一提的是这里好像说明了 Rust 的函数返回机制，好像不需要写 <code>return</code>，直接一个变量名就是返回了。</p>
-<p>OK，到目前为止，初步的编程尝试已经结束了，看了下后面的章节介绍，应该会是更结构化的东西。</p>
 ]]></content>
       <tags>
         <tag>Rust</tag>
