@@ -2,6 +2,15 @@
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   
   <url>
+    <loc>https://twosix.page/about/index.html</loc>
+    
+    <lastmod>2024-07-01</lastmod>
+    
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  
+  <url>
     <loc>https://twosix.page/2024/06/28/%E4%B8%BA%E4%BD%A0%E7%9A%84hexo%E5%8D%9A%E5%AE%A2%E6%B7%BB%E5%8A%A0%E4%B8%80%E4%B8%AA%E8%BF%BD%E7%95%AA%E5%88%97%E8%A1%A8/</loc>
     
     <lastmod>2024-07-01</lastmod>
@@ -183,15 +192,6 @@
   
   <url>
     <loc>https://twosix.page/tags/index.html</loc>
-    
-    <lastmod>2024-06-27</lastmod>
-    
-    <changefreq>monthly</changefreq>
-    <priority>0.6</priority>
-  </url>
-  
-  <url>
-    <loc>https://twosix.page/about/index.html</loc>
     
     <lastmod>2024-06-27</lastmod>
     
