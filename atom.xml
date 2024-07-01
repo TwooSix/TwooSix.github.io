@@ -3,11 +3,11 @@
   <title>TwoSix的小木屋</title>
   
   
-  <link href="http://example.com/atom.xml" rel="self"/>
+  <link href="https://twosix.page/atom.xml" rel="self"/>
   
-  <link href="http://example.com/"/>
+  <link href="https://twosix.page/"/>
   <updated>2024-07-01T03:17:42.166Z</updated>
-  <id>http://example.com/</id>
+  <id>https://twosix.page/</id>
   
   <author>
     <name>TwoSix</name>
@@ -18,8 +18,8 @@
   
   <entry>
     <title>为你的hexo博客添加一个追番列表</title>
-    <link href="http://example.com/2024/06/28/%E4%B8%BA%E4%BD%A0%E7%9A%84hexo%E5%8D%9A%E5%AE%A2%E6%B7%BB%E5%8A%A0%E4%B8%80%E4%B8%AA%E8%BF%BD%E7%95%AA%E5%88%97%E8%A1%A8/"/>
-    <id>http://example.com/2024/06/28/%E4%B8%BA%E4%BD%A0%E7%9A%84hexo%E5%8D%9A%E5%AE%A2%E6%B7%BB%E5%8A%A0%E4%B8%80%E4%B8%AA%E8%BF%BD%E7%95%AA%E5%88%97%E8%A1%A8/</id>
+    <link href="https://twosix.page/2024/06/28/%E4%B8%BA%E4%BD%A0%E7%9A%84hexo%E5%8D%9A%E5%AE%A2%E6%B7%BB%E5%8A%A0%E4%B8%80%E4%B8%AA%E8%BF%BD%E7%95%AA%E5%88%97%E8%A1%A8/"/>
+    <id>https://twosix.page/2024/06/28/%E4%B8%BA%E4%BD%A0%E7%9A%84hexo%E5%8D%9A%E5%AE%A2%E6%B7%BB%E5%8A%A0%E4%B8%80%E4%B8%AA%E8%BF%BD%E7%95%AA%E5%88%97%E8%A1%A8/</id>
     <published>2024-06-28T08:42:06.000Z</published>
     <updated>2024-07-01T03:17:42.166Z</updated>
     
@@ -35,17 +35,17 @@
     
     
     
-    <category term="编程/语言" scheme="http://example.com/categories/%E7%BC%96%E7%A8%8B-%E8%AF%AD%E8%A8%80/"/>
+    <category term="编程/语言" scheme="https://twosix.page/categories/%E7%BC%96%E7%A8%8B-%E8%AF%AD%E8%A8%80/"/>
     
     
-    <category term="前端" scheme="http://example.com/tags/%E5%89%8D%E7%AB%AF/"/>
+    <category term="前端" scheme="https://twosix.page/tags/%E5%89%8D%E7%AB%AF/"/>
     
   </entry>
   
   <entry>
     <title>cmake调用windeployqt实现自动打包qt的dll文件</title>
-    <link href="http://example.com/2024/06/27/cmake%E8%B0%83%E7%94%A8windeployqt%E5%AE%9E%E7%8E%B0%E8%87%AA%E5%8A%A8%E6%89%93%E5%8C%85qt%E7%9A%84dll%E6%96%87%E4%BB%B6/"/>
-    <id>http://example.com/2024/06/27/cmake%E8%B0%83%E7%94%A8windeployqt%E5%AE%9E%E7%8E%B0%E8%87%AA%E5%8A%A8%E6%89%93%E5%8C%85qt%E7%9A%84dll%E6%96%87%E4%BB%B6/</id>
+    <link href="https://twosix.page/2024/06/27/cmake%E8%B0%83%E7%94%A8windeployqt%E5%AE%9E%E7%8E%B0%E8%87%AA%E5%8A%A8%E6%89%93%E5%8C%85qt%E7%9A%84dll%E6%96%87%E4%BB%B6/"/>
+    <id>https://twosix.page/2024/06/27/cmake%E8%B0%83%E7%94%A8windeployqt%E5%AE%9E%E7%8E%B0%E8%87%AA%E5%8A%A8%E6%89%93%E5%8C%85qt%E7%9A%84dll%E6%96%87%E4%BB%B6/</id>
     <published>2024-06-27T12:11:05.000Z</published>
     <updated>2024-06-27T12:28:57.929Z</updated>
     
@@ -61,17 +61,17 @@
     
     
     
-    <category term="编程/语言" scheme="http://example.com/categories/%E7%BC%96%E7%A8%8B-%E8%AF%AD%E8%A8%80/"/>
+    <category term="编程/语言" scheme="https://twosix.page/categories/%E7%BC%96%E7%A8%8B-%E8%AF%AD%E8%A8%80/"/>
     
     
-    <category term="cmake" scheme="http://example.com/tags/cmake/"/>
+    <category term="cmake" scheme="https://twosix.page/tags/cmake/"/>
     
   </entry>
   
   <entry>
     <title>【Rust 学习记录】14. 进一步认识Cargo及crates.io</title>
-    <link href="http://example.com/2024/01/23/%E3%80%90Rust-%E5%AD%A6%E4%B9%A0%E8%AE%B0%E5%BD%95%E3%80%9114-%E8%BF%9B%E4%B8%80%E6%AD%A5%E8%AE%A4%E8%AF%86Cargo%E5%8F%8Acrates-io/"/>
-    <id>http://example.com/2024/01/23/%E3%80%90Rust-%E5%AD%A6%E4%B9%A0%E8%AE%B0%E5%BD%95%E3%80%9114-%E8%BF%9B%E4%B8%80%E6%AD%A5%E8%AE%A4%E8%AF%86Cargo%E5%8F%8Acrates-io/</id>
+    <link href="https://twosix.page/2024/01/23/%E3%80%90Rust-%E5%AD%A6%E4%B9%A0%E8%AE%B0%E5%BD%95%E3%80%9114-%E8%BF%9B%E4%B8%80%E6%AD%A5%E8%AE%A4%E8%AF%86Cargo%E5%8F%8Acrates-io/"/>
+    <id>https://twosix.page/2024/01/23/%E3%80%90Rust-%E5%AD%A6%E4%B9%A0%E8%AE%B0%E5%BD%95%E3%80%9114-%E8%BF%9B%E4%B8%80%E6%AD%A5%E8%AE%A4%E8%AF%86Cargo%E5%8F%8Acrates-io/</id>
     <published>2024-01-23T13:55:47.000Z</published>
     <updated>2024-06-27T12:34:10.693Z</updated>
     
@@ -85,17 +85,17 @@
     
     
     
-    <category term="编程/语言" scheme="http://example.com/categories/%E7%BC%96%E7%A8%8B-%E8%AF%AD%E8%A8%80/"/>
+    <category term="编程/语言" scheme="https://twosix.page/categories/%E7%BC%96%E7%A8%8B-%E8%AF%AD%E8%A8%80/"/>
     
     
-    <category term="Rust" scheme="http://example.com/tags/Rust/"/>
+    <category term="Rust" scheme="https://twosix.page/tags/Rust/"/>
     
   </entry>
   
   <entry>
     <title>【Rust 学习记录】13. 闭包与迭代器</title>
-    <link href="http://example.com/2024/01/18/%E3%80%90Rust-%E5%AD%A6%E4%B9%A0%E8%AE%B0%E5%BD%95%E3%80%9113-%E9%97%AD%E5%8C%85%E4%B8%8E%E8%BF%AD%E4%BB%A3%E5%99%A8/"/>
-    <id>http://example.com/2024/01/18/%E3%80%90Rust-%E5%AD%A6%E4%B9%A0%E8%AE%B0%E5%BD%95%E3%80%9113-%E9%97%AD%E5%8C%85%E4%B8%8E%E8%BF%AD%E4%BB%A3%E5%99%A8/</id>
+    <link href="https://twosix.page/2024/01/18/%E3%80%90Rust-%E5%AD%A6%E4%B9%A0%E8%AE%B0%E5%BD%95%E3%80%9113-%E9%97%AD%E5%8C%85%E4%B8%8E%E8%BF%AD%E4%BB%A3%E5%99%A8/"/>
+    <id>https://twosix.page/2024/01/18/%E3%80%90Rust-%E5%AD%A6%E4%B9%A0%E8%AE%B0%E5%BD%95%E3%80%9113-%E9%97%AD%E5%8C%85%E4%B8%8E%E8%BF%AD%E4%BB%A3%E5%99%A8/</id>
     <published>2024-01-18T12:57:44.000Z</published>
     <updated>2024-06-27T12:34:10.694Z</updated>
     
@@ -109,17 +109,17 @@
     
     
     
-    <category term="编程/语言" scheme="http://example.com/categories/%E7%BC%96%E7%A8%8B-%E8%AF%AD%E8%A8%80/"/>
+    <category term="编程/语言" scheme="https://twosix.page/categories/%E7%BC%96%E7%A8%8B-%E8%AF%AD%E8%A8%80/"/>
     
     
-    <category term="Rust" scheme="http://example.com/tags/Rust/"/>
+    <category term="Rust" scheme="https://twosix.page/tags/Rust/"/>
     
   </entry>
   
   <entry>
     <title>【Rust 学习记录】12. 编写一个命令行程序</title>
-    <link href="http://example.com/2023/05/12/%E3%80%90Rust-%E5%AD%A6%E4%B9%A0%E8%AE%B0%E5%BD%95%E3%80%9112-%E7%BC%96%E5%86%99%E4%B8%80%E4%B8%AA%E5%91%BD%E4%BB%A4%E8%A1%8C%E7%A8%8B%E5%BA%8F/"/>
-    <id>http://example.com/2023/05/12/%E3%80%90Rust-%E5%AD%A6%E4%B9%A0%E8%AE%B0%E5%BD%95%E3%80%9112-%E7%BC%96%E5%86%99%E4%B8%80%E4%B8%AA%E5%91%BD%E4%BB%A4%E8%A1%8C%E7%A8%8B%E5%BA%8F/</id>
+    <link href="https://twosix.page/2023/05/12/%E3%80%90Rust-%E5%AD%A6%E4%B9%A0%E8%AE%B0%E5%BD%95%E3%80%9112-%E7%BC%96%E5%86%99%E4%B8%80%E4%B8%AA%E5%91%BD%E4%BB%A4%E8%A1%8C%E7%A8%8B%E5%BA%8F/"/>
+    <id>https://twosix.page/2023/05/12/%E3%80%90Rust-%E5%AD%A6%E4%B9%A0%E8%AE%B0%E5%BD%95%E3%80%9112-%E7%BC%96%E5%86%99%E4%B8%80%E4%B8%AA%E5%91%BD%E4%BB%A4%E8%A1%8C%E7%A8%8B%E5%BA%8F/</id>
     <published>2023-05-12T13:34:53.000Z</published>
     <updated>2024-06-27T12:34:10.694Z</updated>
     
@@ -136,17 +136,17 @@
     
     
     
-    <category term="编程/语言" scheme="http://example.com/categories/%E7%BC%96%E7%A8%8B-%E8%AF%AD%E8%A8%80/"/>
+    <category term="编程/语言" scheme="https://twosix.page/categories/%E7%BC%96%E7%A8%8B-%E8%AF%AD%E8%A8%80/"/>
     
     
-    <category term="Rust" scheme="http://example.com/tags/Rust/"/>
+    <category term="Rust" scheme="https://twosix.page/tags/Rust/"/>
     
   </entry>
   
   <entry>
     <title>【Rust 学习记录】11. 编写自动化测试</title>
-    <link href="http://example.com/2023/05/09/%E3%80%90Rust-%E5%AD%A6%E4%B9%A0%E8%AE%B0%E5%BD%95%E3%80%9111-%E7%BC%96%E5%86%99%E8%87%AA%E5%8A%A8%E5%8C%96%E6%B5%8B%E8%AF%95/"/>
-    <id>http://example.com/2023/05/09/%E3%80%90Rust-%E5%AD%A6%E4%B9%A0%E8%AE%B0%E5%BD%95%E3%80%9111-%E7%BC%96%E5%86%99%E8%87%AA%E5%8A%A8%E5%8C%96%E6%B5%8B%E8%AF%95/</id>
+    <link href="https://twosix.page/2023/05/09/%E3%80%90Rust-%E5%AD%A6%E4%B9%A0%E8%AE%B0%E5%BD%95%E3%80%9111-%E7%BC%96%E5%86%99%E8%87%AA%E5%8A%A8%E5%8C%96%E6%B5%8B%E8%AF%95/"/>
+    <id>https://twosix.page/2023/05/09/%E3%80%90Rust-%E5%AD%A6%E4%B9%A0%E8%AE%B0%E5%BD%95%E3%80%9111-%E7%BC%96%E5%86%99%E8%87%AA%E5%8A%A8%E5%8C%96%E6%B5%8B%E8%AF%95/</id>
     <published>2023-05-09T08:00:30.000Z</published>
     <updated>2024-06-27T12:34:10.696Z</updated>
     
@@ -163,17 +163,17 @@
     
     
     
-    <category term="编程/语言" scheme="http://example.com/categories/%E7%BC%96%E7%A8%8B-%E8%AF%AD%E8%A8%80/"/>
+    <category term="编程/语言" scheme="https://twosix.page/categories/%E7%BC%96%E7%A8%8B-%E8%AF%AD%E8%A8%80/"/>
     
     
-    <category term="Rust" scheme="http://example.com/tags/Rust/"/>
+    <category term="Rust" scheme="https://twosix.page/tags/Rust/"/>
     
   </entry>
   
   <entry>
     <title>【Rust 学习记录】10. 泛型、trait与生命周期</title>
-    <link href="http://example.com/2023/05/08/%E3%80%90Rust-%E5%AD%A6%E4%B9%A0%E8%AE%B0%E5%BD%95%E3%80%9110-%E6%B3%9B%E5%9E%8B%E3%80%81trait%E4%B8%8E%E7%94%9F%E5%91%BD%E5%91%A8%E6%9C%9F/"/>
-    <id>http://example.com/2023/05/08/%E3%80%90Rust-%E5%AD%A6%E4%B9%A0%E8%AE%B0%E5%BD%95%E3%80%9110-%E6%B3%9B%E5%9E%8B%E3%80%81trait%E4%B8%8E%E7%94%9F%E5%91%BD%E5%91%A8%E6%9C%9F/</id>
+    <link href="https://twosix.page/2023/05/08/%E3%80%90Rust-%E5%AD%A6%E4%B9%A0%E8%AE%B0%E5%BD%95%E3%80%9110-%E6%B3%9B%E5%9E%8B%E3%80%81trait%E4%B8%8E%E7%94%9F%E5%91%BD%E5%91%A8%E6%9C%9F/"/>
+    <id>https://twosix.page/2023/05/08/%E3%80%90Rust-%E5%AD%A6%E4%B9%A0%E8%AE%B0%E5%BD%95%E3%80%9110-%E6%B3%9B%E5%9E%8B%E3%80%81trait%E4%B8%8E%E7%94%9F%E5%91%BD%E5%91%A8%E6%9C%9F/</id>
     <published>2023-05-08T13:17:12.000Z</published>
     <updated>2024-06-27T12:34:10.696Z</updated>
     
@@ -188,17 +188,17 @@
     
     
     
-    <category term="编程/语言" scheme="http://example.com/categories/%E7%BC%96%E7%A8%8B-%E8%AF%AD%E8%A8%80/"/>
+    <category term="编程/语言" scheme="https://twosix.page/categories/%E7%BC%96%E7%A8%8B-%E8%AF%AD%E8%A8%80/"/>
     
     
-    <category term="Rust" scheme="http://example.com/tags/Rust/"/>
+    <category term="Rust" scheme="https://twosix.page/tags/Rust/"/>
     
   </entry>
   
   <entry>
     <title>使用Sphinx为你的项目快速构建文档</title>
-    <link href="http://example.com/2023/04/15/%E4%BD%BF%E7%94%A8Sphinx%E4%B8%BA%E4%BD%A0%E7%9A%84%E9%A1%B9%E7%9B%AE%E5%BF%AB%E9%80%9F%E6%9E%84%E5%BB%BA%E6%96%87%E6%A1%A3/"/>
-    <id>http://example.com/2023/04/15/%E4%BD%BF%E7%94%A8Sphinx%E4%B8%BA%E4%BD%A0%E7%9A%84%E9%A1%B9%E7%9B%AE%E5%BF%AB%E9%80%9F%E6%9E%84%E5%BB%BA%E6%96%87%E6%A1%A3/</id>
+    <link href="https://twosix.page/2023/04/15/%E4%BD%BF%E7%94%A8Sphinx%E4%B8%BA%E4%BD%A0%E7%9A%84%E9%A1%B9%E7%9B%AE%E5%BF%AB%E9%80%9F%E6%9E%84%E5%BB%BA%E6%96%87%E6%A1%A3/"/>
+    <id>https://twosix.page/2023/04/15/%E4%BD%BF%E7%94%A8Sphinx%E4%B8%BA%E4%BD%A0%E7%9A%84%E9%A1%B9%E7%9B%AE%E5%BF%AB%E9%80%9F%E6%9E%84%E5%BB%BA%E6%96%87%E6%A1%A3/</id>
     <published>2023-04-14T17:13:00.000Z</published>
     <updated>2024-06-27T12:34:41.902Z</updated>
     
@@ -213,17 +213,17 @@
     
     
     
-    <category term="好软推荐" scheme="http://example.com/categories/%E5%A5%BD%E8%BD%AF%E6%8E%A8%E8%8D%90/"/>
+    <category term="好软推荐" scheme="https://twosix.page/categories/%E5%A5%BD%E8%BD%AF%E6%8E%A8%E8%8D%90/"/>
     
     
-    <category term="好软推荐" scheme="http://example.com/tags/%E5%A5%BD%E8%BD%AF%E6%8E%A8%E8%8D%90/"/>
+    <category term="好软推荐" scheme="https://twosix.page/tags/%E5%A5%BD%E8%BD%AF%E6%8E%A8%E8%8D%90/"/>
     
   </entry>
   
   <entry>
     <title>【Rust 学习记录】9. 错误处理</title>
-    <link href="http://example.com/2023/04/06/%E3%80%90Rust-%E5%AD%A6%E4%B9%A0%E8%AE%B0%E5%BD%95%E3%80%919-%E9%94%99%E8%AF%AF%E5%A4%84%E7%90%86/"/>
-    <id>http://example.com/2023/04/06/%E3%80%90Rust-%E5%AD%A6%E4%B9%A0%E8%AE%B0%E5%BD%95%E3%80%919-%E9%94%99%E8%AF%AF%E5%A4%84%E7%90%86/</id>
+    <link href="https://twosix.page/2023/04/06/%E3%80%90Rust-%E5%AD%A6%E4%B9%A0%E8%AE%B0%E5%BD%95%E3%80%919-%E9%94%99%E8%AF%AF%E5%A4%84%E7%90%86/"/>
+    <id>https://twosix.page/2023/04/06/%E3%80%90Rust-%E5%AD%A6%E4%B9%A0%E8%AE%B0%E5%BD%95%E3%80%919-%E9%94%99%E8%AF%AF%E5%A4%84%E7%90%86/</id>
     <published>2023-04-06T14:23:58.000Z</published>
     <updated>2024-06-27T12:34:10.691Z</updated>
     
@@ -240,17 +240,17 @@
     
     
     
-    <category term="编程/语言" scheme="http://example.com/categories/%E7%BC%96%E7%A8%8B-%E8%AF%AD%E8%A8%80/"/>
+    <category term="编程/语言" scheme="https://twosix.page/categories/%E7%BC%96%E7%A8%8B-%E8%AF%AD%E8%A8%80/"/>
     
     
-    <category term="Rust" scheme="http://example.com/tags/Rust/"/>
+    <category term="Rust" scheme="https://twosix.page/tags/Rust/"/>
     
   </entry>
   
   <entry>
     <title>【Rust 学习记录】8. 通用集合类型</title>
-    <link href="http://example.com/2023/04/02/%E3%80%90Rust-%E5%AD%A6%E4%B9%A0%E8%AE%B0%E5%BD%95%E3%80%918-%E9%80%9A%E7%94%A8%E9%9B%86%E5%90%88%E7%B1%BB%E5%9E%8B/"/>
-    <id>http://example.com/2023/04/02/%E3%80%90Rust-%E5%AD%A6%E4%B9%A0%E8%AE%B0%E5%BD%95%E3%80%918-%E9%80%9A%E7%94%A8%E9%9B%86%E5%90%88%E7%B1%BB%E5%9E%8B/</id>
+    <link href="https://twosix.page/2023/04/02/%E3%80%90Rust-%E5%AD%A6%E4%B9%A0%E8%AE%B0%E5%BD%95%E3%80%918-%E9%80%9A%E7%94%A8%E9%9B%86%E5%90%88%E7%B1%BB%E5%9E%8B/"/>
+    <id>https://twosix.page/2023/04/02/%E3%80%90Rust-%E5%AD%A6%E4%B9%A0%E8%AE%B0%E5%BD%95%E3%80%918-%E9%80%9A%E7%94%A8%E9%9B%86%E5%90%88%E7%B1%BB%E5%9E%8B/</id>
     <published>2023-04-02T14:51:57.000Z</published>
     <updated>2024-06-27T12:34:10.692Z</updated>
     
@@ -264,17 +264,17 @@
     
     
     
-    <category term="编程/语言" scheme="http://example.com/categories/%E7%BC%96%E7%A8%8B-%E8%AF%AD%E8%A8%80/"/>
+    <category term="编程/语言" scheme="https://twosix.page/categories/%E7%BC%96%E7%A8%8B-%E8%AF%AD%E8%A8%80/"/>
     
     
-    <category term="Rust" scheme="http://example.com/tags/Rust/"/>
+    <category term="Rust" scheme="https://twosix.page/tags/Rust/"/>
     
   </entry>
   
   <entry>
     <title>【Rust 学习记录】7. 包、单元包和模块</title>
-    <link href="http://example.com/2023/04/01/%E3%80%90Rust-%E5%AD%A6%E4%B9%A0%E8%AE%B0%E5%BD%95%E3%80%917-%E5%8C%85%E3%80%81%E5%8D%95%E5%85%83%E5%8C%85%E5%92%8C%E6%A8%A1%E5%9D%97/"/>
-    <id>http://example.com/2023/04/01/%E3%80%90Rust-%E5%AD%A6%E4%B9%A0%E8%AE%B0%E5%BD%95%E3%80%917-%E5%8C%85%E3%80%81%E5%8D%95%E5%85%83%E5%8C%85%E5%92%8C%E6%A8%A1%E5%9D%97/</id>
+    <link href="https://twosix.page/2023/04/01/%E3%80%90Rust-%E5%AD%A6%E4%B9%A0%E8%AE%B0%E5%BD%95%E3%80%917-%E5%8C%85%E3%80%81%E5%8D%95%E5%85%83%E5%8C%85%E5%92%8C%E6%A8%A1%E5%9D%97/"/>
+    <id>https://twosix.page/2023/04/01/%E3%80%90Rust-%E5%AD%A6%E4%B9%A0%E8%AE%B0%E5%BD%95%E3%80%917-%E5%8C%85%E3%80%81%E5%8D%95%E5%85%83%E5%8C%85%E5%92%8C%E6%A8%A1%E5%9D%97/</id>
     <published>2023-04-01T14:41:12.000Z</published>
     <updated>2024-06-27T12:34:10.692Z</updated>
     
@@ -289,17 +289,17 @@
     
     
     
-    <category term="编程/语言" scheme="http://example.com/categories/%E7%BC%96%E7%A8%8B-%E8%AF%AD%E8%A8%80/"/>
+    <category term="编程/语言" scheme="https://twosix.page/categories/%E7%BC%96%E7%A8%8B-%E8%AF%AD%E8%A8%80/"/>
     
     
-    <category term="Rust" scheme="http://example.com/tags/Rust/"/>
+    <category term="Rust" scheme="https://twosix.page/tags/Rust/"/>
     
   </entry>
   
   <entry>
     <title>【Rust 学习记录】6. 枚举与模式匹配</title>
-    <link href="http://example.com/2023/03/30/%E3%80%90Rust-%E5%AD%A6%E4%B9%A0%E8%AE%B0%E5%BD%95%E3%80%916-%E6%9E%9A%E4%B8%BE%E4%B8%8E%E6%A8%A1%E5%BC%8F%E5%8C%B9%E9%85%8D/"/>
-    <id>http://example.com/2023/03/30/%E3%80%90Rust-%E5%AD%A6%E4%B9%A0%E8%AE%B0%E5%BD%95%E3%80%916-%E6%9E%9A%E4%B8%BE%E4%B8%8E%E6%A8%A1%E5%BC%8F%E5%8C%B9%E9%85%8D/</id>
+    <link href="https://twosix.page/2023/03/30/%E3%80%90Rust-%E5%AD%A6%E4%B9%A0%E8%AE%B0%E5%BD%95%E3%80%916-%E6%9E%9A%E4%B8%BE%E4%B8%8E%E6%A8%A1%E5%BC%8F%E5%8C%B9%E9%85%8D/"/>
+    <id>https://twosix.page/2023/03/30/%E3%80%90Rust-%E5%AD%A6%E4%B9%A0%E8%AE%B0%E5%BD%95%E3%80%916-%E6%9E%9A%E4%B8%BE%E4%B8%8E%E6%A8%A1%E5%BC%8F%E5%8C%B9%E9%85%8D/</id>
     <published>2023-03-30T14:38:03.000Z</published>
     <updated>2024-06-27T12:34:10.692Z</updated>
     
@@ -314,17 +314,17 @@
     
     
     
-    <category term="编程/语言" scheme="http://example.com/categories/%E7%BC%96%E7%A8%8B-%E8%AF%AD%E8%A8%80/"/>
+    <category term="编程/语言" scheme="https://twosix.page/categories/%E7%BC%96%E7%A8%8B-%E8%AF%AD%E8%A8%80/"/>
     
     
-    <category term="Rust" scheme="http://example.com/tags/Rust/"/>
+    <category term="Rust" scheme="https://twosix.page/tags/Rust/"/>
     
   </entry>
   
   <entry>
     <title>【Rust 学习记录】5. 结构体</title>
-    <link href="http://example.com/2023/03/30/%E3%80%90Rust-%E5%AD%A6%E4%B9%A0%E8%AE%B0%E5%BD%95%E3%80%915-%E7%BB%93%E6%9E%84%E4%BD%93/"/>
-    <id>http://example.com/2023/03/30/%E3%80%90Rust-%E5%AD%A6%E4%B9%A0%E8%AE%B0%E5%BD%95%E3%80%915-%E7%BB%93%E6%9E%84%E4%BD%93/</id>
+    <link href="https://twosix.page/2023/03/30/%E3%80%90Rust-%E5%AD%A6%E4%B9%A0%E8%AE%B0%E5%BD%95%E3%80%915-%E7%BB%93%E6%9E%84%E4%BD%93/"/>
+    <id>https://twosix.page/2023/03/30/%E3%80%90Rust-%E5%AD%A6%E4%B9%A0%E8%AE%B0%E5%BD%95%E3%80%915-%E7%BB%93%E6%9E%84%E4%BD%93/</id>
     <published>2023-03-30T13:05:00.000Z</published>
     <updated>2024-06-27T12:34:14.811Z</updated>
     
@@ -338,17 +338,17 @@
     
     
     
-    <category term="编程/语言" scheme="http://example.com/categories/%E7%BC%96%E7%A8%8B-%E8%AF%AD%E8%A8%80/"/>
+    <category term="编程/语言" scheme="https://twosix.page/categories/%E7%BC%96%E7%A8%8B-%E8%AF%AD%E8%A8%80/"/>
     
     
-    <category term="Rust" scheme="http://example.com/tags/Rust/"/>
+    <category term="Rust" scheme="https://twosix.page/tags/Rust/"/>
     
   </entry>
   
   <entry>
     <title>【Rust学习记录】4. 所有权</title>
-    <link href="http://example.com/2023/03/26/%E3%80%90Rust%E5%AD%A6%E4%B9%A0%E8%AE%B0%E5%BD%95%E3%80%914-%E6%89%80%E6%9C%89%E6%9D%83/"/>
-    <id>http://example.com/2023/03/26/%E3%80%90Rust%E5%AD%A6%E4%B9%A0%E8%AE%B0%E5%BD%95%E3%80%914-%E6%89%80%E6%9C%89%E6%9D%83/</id>
+    <link href="https://twosix.page/2023/03/26/%E3%80%90Rust%E5%AD%A6%E4%B9%A0%E8%AE%B0%E5%BD%95%E3%80%914-%E6%89%80%E6%9C%89%E6%9D%83/"/>
+    <id>https://twosix.page/2023/03/26/%E3%80%90Rust%E5%AD%A6%E4%B9%A0%E8%AE%B0%E5%BD%95%E3%80%914-%E6%89%80%E6%9C%89%E6%9D%83/</id>
     <published>2023-03-26T12:18:45.000Z</published>
     <updated>2024-06-27T12:34:10.690Z</updated>
     
@@ -363,17 +363,17 @@
     
     
     
-    <category term="编程/语言" scheme="http://example.com/categories/%E7%BC%96%E7%A8%8B-%E8%AF%AD%E8%A8%80/"/>
+    <category term="编程/语言" scheme="https://twosix.page/categories/%E7%BC%96%E7%A8%8B-%E8%AF%AD%E8%A8%80/"/>
     
     
-    <category term="Rust" scheme="http://example.com/tags/Rust/"/>
+    <category term="Rust" scheme="https://twosix.page/tags/Rust/"/>
     
   </entry>
   
   <entry>
     <title>【Rust学习记录】3. 通用编程概念</title>
-    <link href="http://example.com/2023/03/25/%E3%80%90Rust%E5%AD%A6%E4%B9%A0%E8%AE%B0%E5%BD%95%E3%80%913-%E9%80%9A%E7%94%A8%E7%BC%96%E7%A8%8B%E6%A6%82%E5%BF%B5/"/>
-    <id>http://example.com/2023/03/25/%E3%80%90Rust%E5%AD%A6%E4%B9%A0%E8%AE%B0%E5%BD%95%E3%80%913-%E9%80%9A%E7%94%A8%E7%BC%96%E7%A8%8B%E6%A6%82%E5%BF%B5/</id>
+    <link href="https://twosix.page/2023/03/25/%E3%80%90Rust%E5%AD%A6%E4%B9%A0%E8%AE%B0%E5%BD%95%E3%80%913-%E9%80%9A%E7%94%A8%E7%BC%96%E7%A8%8B%E6%A6%82%E5%BF%B5/"/>
+    <id>https://twosix.page/2023/03/25/%E3%80%90Rust%E5%AD%A6%E4%B9%A0%E8%AE%B0%E5%BD%95%E3%80%913-%E9%80%9A%E7%94%A8%E7%BC%96%E7%A8%8B%E6%A6%82%E5%BF%B5/</id>
     <published>2023-03-25T11:48:36.000Z</published>
     <updated>2024-06-27T12:34:10.692Z</updated>
     
@@ -388,17 +388,17 @@
     
     
     
-    <category term="编程/语言" scheme="http://example.com/categories/%E7%BC%96%E7%A8%8B-%E8%AF%AD%E8%A8%80/"/>
+    <category term="编程/语言" scheme="https://twosix.page/categories/%E7%BC%96%E7%A8%8B-%E8%AF%AD%E8%A8%80/"/>
     
     
-    <category term="Rust" scheme="http://example.com/tags/Rust/"/>
+    <category term="Rust" scheme="https://twosix.page/tags/Rust/"/>
     
   </entry>
   
   <entry>
     <title>【Rust学习记录】2. 猜数游戏——尝试代码编写</title>
-    <link href="http://example.com/2023/03/25/%E3%80%90Rust%E5%AD%A6%E4%B9%A0%E8%AE%B0%E5%BD%95%E3%80%912-%E7%8C%9C%E6%95%B0%E6%B8%B8%E6%88%8F%E2%80%94%E2%80%94%E5%B0%9D%E8%AF%95%E4%BB%A3%E7%A0%81%E7%BC%96%E5%86%99/"/>
-    <id>http://example.com/2023/03/25/%E3%80%90Rust%E5%AD%A6%E4%B9%A0%E8%AE%B0%E5%BD%95%E3%80%912-%E7%8C%9C%E6%95%B0%E6%B8%B8%E6%88%8F%E2%80%94%E2%80%94%E5%B0%9D%E8%AF%95%E4%BB%A3%E7%A0%81%E7%BC%96%E5%86%99/</id>
+    <link href="https://twosix.page/2023/03/25/%E3%80%90Rust%E5%AD%A6%E4%B9%A0%E8%AE%B0%E5%BD%95%E3%80%912-%E7%8C%9C%E6%95%B0%E6%B8%B8%E6%88%8F%E2%80%94%E2%80%94%E5%B0%9D%E8%AF%95%E4%BB%A3%E7%A0%81%E7%BC%96%E5%86%99/"/>
+    <id>https://twosix.page/2023/03/25/%E3%80%90Rust%E5%AD%A6%E4%B9%A0%E8%AE%B0%E5%BD%95%E3%80%912-%E7%8C%9C%E6%95%B0%E6%B8%B8%E6%88%8F%E2%80%94%E2%80%94%E5%B0%9D%E8%AF%95%E4%BB%A3%E7%A0%81%E7%BC%96%E5%86%99/</id>
     <published>2023-03-25T06:45:41.000Z</published>
     <updated>2024-06-27T12:34:10.692Z</updated>
     
@@ -412,17 +412,17 @@
     
     
     
-    <category term="编程/语言" scheme="http://example.com/categories/%E7%BC%96%E7%A8%8B-%E8%AF%AD%E8%A8%80/"/>
+    <category term="编程/语言" scheme="https://twosix.page/categories/%E7%BC%96%E7%A8%8B-%E8%AF%AD%E8%A8%80/"/>
     
     
-    <category term="Rust" scheme="http://example.com/tags/Rust/"/>
+    <category term="Rust" scheme="https://twosix.page/tags/Rust/"/>
     
   </entry>
   
   <entry>
     <title>【Rust学习记录】1. 开发环境搭建</title>
-    <link href="http://example.com/2023/03/24/%E3%80%90Rust%E5%AD%A6%E4%B9%A0%E8%AE%B0%E5%BD%95%E3%80%911-%E5%BC%80%E5%8F%91%E7%8E%AF%E5%A2%83%E6%90%AD%E5%BB%BA/"/>
-    <id>http://example.com/2023/03/24/%E3%80%90Rust%E5%AD%A6%E4%B9%A0%E8%AE%B0%E5%BD%95%E3%80%911-%E5%BC%80%E5%8F%91%E7%8E%AF%E5%A2%83%E6%90%AD%E5%BB%BA/</id>
+    <link href="https://twosix.page/2023/03/24/%E3%80%90Rust%E5%AD%A6%E4%B9%A0%E8%AE%B0%E5%BD%95%E3%80%911-%E5%BC%80%E5%8F%91%E7%8E%AF%E5%A2%83%E6%90%AD%E5%BB%BA/"/>
+    <id>https://twosix.page/2023/03/24/%E3%80%90Rust%E5%AD%A6%E4%B9%A0%E8%AE%B0%E5%BD%95%E3%80%911-%E5%BC%80%E5%8F%91%E7%8E%AF%E5%A2%83%E6%90%AD%E5%BB%BA/</id>
     <published>2023-03-24T14:14:11.000Z</published>
     <updated>2024-06-27T12:34:10.692Z</updated>
     
@@ -442,10 +442,10 @@
     
     
     
-    <category term="编程/语言" scheme="http://example.com/categories/%E7%BC%96%E7%A8%8B-%E8%AF%AD%E8%A8%80/"/>
+    <category term="编程/语言" scheme="https://twosix.page/categories/%E7%BC%96%E7%A8%8B-%E8%AF%AD%E8%A8%80/"/>
     
     
-    <category term="Rust" scheme="http://example.com/tags/Rust/"/>
+    <category term="Rust" scheme="https://twosix.page/tags/Rust/"/>
     
   </entry>
   
