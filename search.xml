@@ -22,177 +22,6 @@
       </tags>
   </entry>
   <entry>
-    <title>【Rust 学习记录】11. 编写自动化测试</title>
-    <url>/2023/05/09/%E3%80%90Rust-%E5%AD%A6%E4%B9%A0%E8%AE%B0%E5%BD%95%E3%80%9111-%E7%BC%96%E5%86%99%E8%87%AA%E5%8A%A8%E5%8C%96%E6%B5%8B%E8%AF%95/</url>
-    <content><![CDATA[<blockquote>
-<p>这一章讲的就是怎么在Rust编写单元测试代码，这一部分的思想不仅适用于Rust，在绝大多数语言都是有用武之地的</p>
-</blockquote>
-<h1 id="如何编写测试"><a href="#如何编写测试" class="headerlink" title="如何编写测试"></a>如何编写测试</h1><h2 id="测试代码的构成"><a href="#测试代码的构成" class="headerlink" title="测试代码的构成"></a>测试代码的构成</h2><h3 id="构成"><a href="#构成" class="headerlink" title="构成"></a>构成</h3><p>通用测试代码通常包括三个部分</p>
-<ol>
-<li>准备所需的数据或者前置状态</li>
-<li>调用需要测试的代码</li>
-<li>使用断言，判断运行结果是否和我们期望的一致</li>
-</ol>
-<p>在Rust中，有专门用于编写测试代码的相关功能，包含test属性，测试宏，should_panic属性等等</p>
-<p>在最简单的情况下，Rust中的测试就是一个标注有<code>test</code>属性的函数。只需要将<code>#[test]</code>添加到函数的关键字<code>fn</code>上，就能使用<code>cargo test</code>命令来运行测试。</p>
-<p>测试命令会构建一个可执行文件，调用所有标注了test的函数，生成相关报告。</p>
-<blockquote>
-<p>PS：</p>
-<p><strong>属性</strong>是一种修饰代码的一种元数据，例如之前为了输出结构体时，加入的<code>#[derive(Debug)]</code>就是一个属性，声明属性后，会为下面的代码自动生成一些实现，如<code>#[derive(Debug)]</code>修饰结构体时，就会为结构体生成Debug trait的实现</p>
-</blockquote>
-<h3 id="初次尝试"><a href="#初次尝试" class="headerlink" title="初次尝试"></a>初次尝试</h3><p>接下来我们就试试怎么测试</p>
-<p>首先新建一个名为adder的项目<code>cargo new adder --lib</code>(–lib指生成lib.rs文件)</p>
-<p>可能是版本比较新，lib.rs里直接生成有了以下代码</p>
-<div class="highlight-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="code"><pre><span class="line">pub fn add(left: usize, right: usize) -&gt; usize &#123;</span><br><span class="line">    left + right</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">#[cfg(test)]</span><br><span class="line">mod tests &#123;</span><br><span class="line">    use super::*;</span><br><span class="line"></span><br><span class="line">    #[test]</span><br><span class="line">    fn it_works() &#123;</span><br><span class="line">        let result = add(2, 2);</span><br><span class="line">        assert_eq!(result, 4);</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
-
-<p>我们先忽略一些没讲过的关键词，这段代码里我们定义了一个<code>it_works</code>函数，并标注为测试函数，然后使用断言判断<code>add</code>函数的结果是否正确的等于4。在了解了大概功能之后，我们直接运行测试看看</p>
-<div class="highlight-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="code"><pre><span class="line">cargo test</span><br><span class="line">   Compiling adder v0.1.0 (E:\Code\rust\adder)</span><br><span class="line">    Finished test [unoptimized + debuginfo] target(s) in 0.29s</span><br><span class="line">     Running unittests src\lib.rs (target\debug\deps\adder-0a86cd050490705e.exe)</span><br><span class="line"></span><br><span class="line">running 1 test</span><br><span class="line">test tests::it_works ... ok</span><br><span class="line"></span><br><span class="line">test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s</span><br><span class="line"></span><br><span class="line">   Doc-tests adder</span><br><span class="line"></span><br><span class="line">running 0 tests</span><br><span class="line"></span><br><span class="line">test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s</span><br></pre></td></tr></table></figure></div>
-
-<p>对应的测试结果如上</p>
-<ul>
-<li>passed: 测试通过的函数数量，我们这里只有一个it_works函数，且测试通过，所以为1</li>
-<li>failed: 测试失败的函数数量</li>
-<li>ignored: 被标记为忽略的测试函数，后面会提</li>
-<li>measured: Rust还提供了衡量函数性能的benchmark方法，不过编写书的时候似乎这部分还不完善，所以不会有讲解，想了解需要自行学习</li>
-<li>filtered out：被过滤掉的测试函数</li>
-<li>Doc-tests：文档测试，这是个很好用的特性，可以防止你在修改了函数之后，忘记修改自己的文档，保证文档能和实际代码同步。</li>
-</ul>
-<p>测试时，每一个测试函数都是运行在独立的线程里的，所以发生panic时并不会影响其他的测试，我们可以写一个错误的函数看看</p>
-<div class="highlight-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="code"><pre><span class="line">pub fn add(left: usize, right: usize) -&gt; usize &#123;</span><br><span class="line">    left + right</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">#[cfg(test)]</span><br><span class="line">mod tests &#123;</span><br><span class="line">    use super::*;</span><br><span class="line"></span><br><span class="line">    #[test]</span><br><span class="line">    fn error() &#123;</span><br><span class="line">        let result = add(3, 2);</span><br><span class="line">        assert_eq!(result, 4);</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    #[test]</span><br><span class="line">    fn it_works() &#123;</span><br><span class="line">        let result = add(2, 2);</span><br><span class="line">        assert_eq!(result, 4);</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
-
-<p>输出结果：</p>
-<div class="highlight-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="code"><pre><span class="line">cargo test</span><br><span class="line">   Compiling adder v0.1.0 (E:\Code\rust\adder)</span><br><span class="line">    Finished test [unoptimized + debuginfo] target(s) in 0.24s</span><br><span class="line">     Running unittests src\lib.rs (target\debug\deps\adder-0a86cd050490705e.exe)</span><br><span class="line"></span><br><span class="line">running 2 tests</span><br><span class="line">test tests::it_works ... ok</span><br><span class="line">test tests::error ... FAILED</span><br><span class="line"></span><br><span class="line">failures:</span><br><span class="line"></span><br><span class="line">---- tests::error stdout ----</span><br><span class="line">thread &#x27;tests::error&#x27; panicked at &#x27;assertion failed: `(left == right)`</span><br><span class="line">  left: `5`,</span><br><span class="line"> right: `4`&#x27;, src\lib.rs:18:9</span><br><span class="line">note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace</span><br><span class="line"></span><br><span class="line"></span><br><span class="line">failures:</span><br><span class="line">    tests::error</span><br><span class="line"></span><br><span class="line">test result: FAILED. 1 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s</span><br><span class="line"></span><br><span class="line">error: test failed, to rerun pass `--lib`</span><br></pre></td></tr></table></figure></div>
-
-<p>可以看见，error的panic并不影响it_works的测试通过。</p>
-<h2 id="assert-宏"><a href="#assert-宏" class="headerlink" title="assert!宏"></a>assert!宏</h2><h3 id="assert"><a href="#assert" class="headerlink" title="assert!"></a>assert!</h3><p><code>assert!</code>宏主要的功能是用来确保某个值为<code>true</code>，所以常被用于测试中。如<code>a&gt;b</code>等场景，返回的是一个bool值，就完美的符合assert!的使用场景，可以使用assert!进行测试，例如</p>
-<div class="highlight-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="code"><pre><span class="line">pub fn cmp(a: i32, b: i32) -&gt; bool &#123;</span><br><span class="line">    if a&gt;b&#123;</span><br><span class="line">        true</span><br><span class="line">    &#125;</span><br><span class="line">    else&#123;</span><br><span class="line">        false</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">#[cfg(test)]</span><br><span class="line">mod tests &#123;</span><br><span class="line">    use super::*;</span><br><span class="line"></span><br><span class="line">    #[test]</span><br><span class="line">    fn cmp_test()&#123;</span><br><span class="line">        let result = cmp(3, 2);</span><br><span class="line">        assert!(result);</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
-
-<h3 id="assert-eq-和assert-ne"><a href="#assert-eq-和assert-ne" class="headerlink" title="assert_eq!和assert_ne!"></a>assert_eq!和assert_ne!</h3><p>那如果返回值不是bool值呢？前面也出现过了，我们可以使用<code>assert_eq!</code>或者<code>assert_ne!</code>来断言两个值是否相等。</p>
-<p>eq则对应的只有相等才能通过断言，ne则对应的只有不相等才能通过断言，用例见上面的add测试即可。</p>
-<p><strong>但是注意</strong>，assert_eq!和assert_ne!使用了<code>==</code>和<code>!=</code>来实现是否相等的判断，也就意味着，传入这两个宏的参数是必须实现了<code>PartialEq</code>这个trait的。同时，我们可见错误的输出中会打印出详细的不相等原因，也就是说它还同时需要实现了<code>Debug</code>宏帮助打印输出。一般绝大部分参数都是满足要求的，自定义的结构体时需要注意。</p>
-<blockquote>
-<p>之前提到过属性这个概念，会为你自动实现一些功能，实际上PartialEq和Debug作为可派生的宏，也内置了属性的实现，你只需要在自己定义的结构体上加上<code>#[derive(PartialEq, Debug)]</code>，就能自动帮你实现这两个宏</p>
-</blockquote>
-<h3 id="自定义错误提示代码"><a href="#自定义错误提示代码" class="headerlink" title="自定义错误提示代码"></a>自定义错误提示代码</h3><p>上面我们说到assert_eq是会有详细输出的，告诉你怎么不相等了，帮助你排除bug，但普通的assert!只判断布尔值，所以没办法有详细的输出，这时候我们可以定制一个输出，使得错误提示更人性化一点。</p>
-<p>如下：</p>
-<div class="highlight-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="code"><pre><span class="line">pub fn cmp(a: i32, b: i32) -&gt; bool &#123;</span><br><span class="line">    if a&gt;b&#123;</span><br><span class="line">        true</span><br><span class="line">    &#125;</span><br><span class="line">    else&#123;</span><br><span class="line">        false</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">#[cfg(test)]</span><br><span class="line">mod tests &#123;</span><br><span class="line">    use super::*;</span><br><span class="line"></span><br><span class="line">    #[test]</span><br><span class="line">    fn cmp_test()&#123;</span><br><span class="line">        let a = 2;</span><br><span class="line">        let b = 3;</span><br><span class="line">        let result = cmp(a, b);</span><br><span class="line">        assert!(result, &quot;&#123;&#125; is not bigger than &#123;&#125;&quot;, a, b);</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
-
-<p>和一般不一样，我们不需要用什么格式化字符串的方法先格式化一个字符串，再传入这个字符串，断言支持直接使用格式化的语法。这段代码的输出如下</p>
-<div class="highlight-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="code"><pre><span class="line">running 1 test</span><br><span class="line">thread &#x27;tests::cmp_test&#x27; panicked at &#x27;2 is not bigger than 3&#x27;, src\lib.rs:23:9</span><br><span class="line">stack backtrace:</span><br></pre></td></tr></table></figure></div>
-
-<p>可见报错提示相对于单纯的panicked at更人性化了一些。</p>
-<p>当然，自定义输出也支持在assert_eq和assert_ne里使用</p>
-<h2 id="should-panic"><a href="#should-panic" class="headerlink" title="should_panic"></a>should_panic</h2><p>should_panic也是一个属性，用来测试代码是否能正确的在出错时发生panic。用例如下</p>
-<div class="highlight-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="code"><pre><span class="line">pub fn positive_num(a: i32) -&gt; i32 &#123;</span><br><span class="line">    if a &gt; 0 &#123;</span><br><span class="line">        a</span><br><span class="line">    &#125; else &#123;</span><br><span class="line">        panic!(&quot;&#123;&#125; is not positive&quot;, a)</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">#[cfg(test)]</span><br><span class="line">mod tests &#123;</span><br><span class="line">    use super::*;</span><br><span class="line"></span><br><span class="line">    #[test]</span><br><span class="line">    #[should_panic]</span><br><span class="line">    fn pos_test()&#123;</span><br><span class="line">        let a = -1;</span><br><span class="line">        positive_num(a);</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
-
-<p>这段代码用来检查一个数是否是正数，在不是时抛出panic，接下来我们使用<code>#[should_panic]</code>来检查程序是否正确的panic，这段代码运行测试通过没问题。</p>
-<p>接下来我们修改一下a的值，让程序不抛出panic，看看会发生什么</p>
-<div class="highlight-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="code"><pre><span class="line">running 1 test</span><br><span class="line">test tests::pos_test - should panic ... FAILED</span><br><span class="line"></span><br><span class="line">failures:</span><br><span class="line"></span><br><span class="line">---- tests::pos_test stdout ----</span><br><span class="line">note: test did not panic as expected</span><br><span class="line"></span><br><span class="line">failures:</span><br><span class="line">    tests::pos_test</span><br><span class="line"></span><br><span class="line">test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s</span><br><span class="line"></span><br><span class="line">error: test failed, to rerun pass `-p adder --lib`</span><br></pre></td></tr></table></figure></div>
-
-<p>测试失败，告诉你pos_test没有按照预期发生panic。这个特性可以用来检查你的代码是否能正确的处理报错，发生panic以阻止程序进一步运行，产生不可预估的后果。</p>
-<p>但是，单纯这么使用感觉有点含糊不清，因为程序发生panic的原因可能不是我们所预期的，假如其他一些我们不知道的原因抛出了panic，也会导致测试通过。所以我们可以添加一个可选参数<code>expected</code>，用来检查panic发生报错的输出信息里是否包含指定的文字。</p>
-<div class="highlight-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="code"><pre><span class="line">#[test]</span><br><span class="line">#[should_panic(expected = &quot;positive&quot;)]</span><br><span class="line">fn pos_test()&#123;</span><br><span class="line">    let a = -1;</span><br><span class="line">    positive_num(a);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
-
-<p>这时候，should_panic就会检查发生的panic输出的报错信息是否包含”positive”这个字符串，如果是，才会测试通过，输出如下：</p>
-<div class="highlight-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="code"><pre><span class="line">running 1 test</span><br><span class="line">thread &#x27;tests::pos_test&#x27; panicked at &#x27;-1 is not positive&#x27;, src\lib.rs:9:9</span><br><span class="line">stack backtrace:</span><br></pre></td></tr></table></figure></div>
-
-<p>可见，输出中也包含了报错的信息，更人性化了。</p>
-<h2 id="使用Result编写测试"><a href="#使用Result编写测试" class="headerlink" title="使用Result编写测试"></a>使用Result编写测试</h2><p>之前学习Result枚举的时候我们就知道了这东西是用来处理报错的，自然也就可以用来处理测试。使用时也很简单，我们只需要声明测试函数的返回值是Result，test命令就会自动根据Result的枚举结果来判断是否测试成功了。如：</p>
-<div class="highlight-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="code"><pre><span class="line">#[cfg(test)]</span><br><span class="line">mod tests &#123;</span><br><span class="line">    use super::*;</span><br><span class="line"></span><br><span class="line">    #[test]</span><br><span class="line">    fn it_works() -&gt; Result&lt;(), String&gt;&#123;</span><br><span class="line">        if 2+2 == 4 &#123;</span><br><span class="line">            Ok(())</span><br><span class="line">        &#125; else &#123;</span><br><span class="line">            Err(String::from(&quot;two plus two does not equal four&quot;))</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
-
-<p>使用Result编写测试函数的主要优势是可以使用问号表达式进行错误捕获，更方便我们去编写一些复杂的测试函数，可以让函数在任一时刻有错误被捕获到时，就返回报错。</p>
-<p>问号表达式的使用可见<a href="https://twosix.page/archives/345">【Rust 学习记录】9. 错误处理</a>的？运算符部分，这里就不再写代码举例了（主要书上没例子，我也懒的写）</p>
-<h1 id="控制测试的运行方式"><a href="#控制测试的运行方式" class="headerlink" title="控制测试的运行方式"></a>控制测试的运行方式</h1><p>这一部分主要是对cargo test命令的讲解，具体的运行方式，参数的使用等。</p>
-<p>cargo test的参数统一需要写在<code>--</code>后面，也就是说你想要使用<code>--help</code>显示参数文档时，需要使用以下命令</p>
-<div class="highlight-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="code"><pre><span class="line">cargo test -- --help</span><br></pre></td></tr></table></figure></div>
-
-<h2 id="并行或串行的执行代码"><a href="#并行或串行的执行代码" class="headerlink" title="并行或串行的执行代码"></a>并行或串行的执行代码</h2><p>默认情况下，测试是多线程并发执行的，这可以使测试更快速的完成，且相互之间不会影响结果。但如果测试间有相互依赖关系，则需要串行执行。例如两个测试用例同时在操作一个文件，一个测试在写内容，一个测试在读内容时，则容易导致测试结果不合预期。</p>
-<p>我们可以使用<code>--test-threads=1</code>来指定测试的线程数为1，即可实现串行执行，当然，你想执行的更快也可以指定更多的线程</p>
-<div class="highlight-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="code"><pre><span class="line">cargo test -- --test-threads=1</span><br></pre></td></tr></table></figure></div>
-
-<h2 id="显示函数的输出"><a href="#显示函数的输出" class="headerlink" title="显示函数的输出"></a>显示函数的输出</h2><p>默认情况下，test命令会捕获所有测试成功时的输出，也就是说，对于测试成功的函数，即使你使用了println!打印输出，你也无法在控制台看见你的输出，因为它被test命令捕获吞掉了。</p>
-<p>如果你想要在控制台显示你的输出，只需要用<code>--nocapture</code>设置不捕获输出即可</p>
-<div class="highlight-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="code"><pre><span class="line">cargo test -- --nocapture</span><br></pre></td></tr></table></figure></div>
-
-<h2 id="只运行部分特定名称的测试"><a href="#只运行部分特定名称的测试" class="headerlink" title="只运行部分特定名称的测试"></a>只运行部分特定名称的测试</h2><p>如果测试的函数越写越多，执行所有的测试可能很花时间，通常我们编写了一个新的功能并想进行测试的时候，我们只需要测试这一个功能就足够了，因此可以向test命令指定函数名称来进行测试。</p>
-<p>如：</p>
-<div class="highlight-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="code"><pre><span class="line">fn add_two(a: i32, b: i32) -&gt; i32 &#123;</span><br><span class="line">    a + b</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"></span><br><span class="line">#[cfg(test)]</span><br><span class="line">mod tests &#123;</span><br><span class="line">    use super::*;</span><br><span class="line"></span><br><span class="line">    #[test]</span><br><span class="line">    fn add_test_1() &#123;</span><br><span class="line">        assert_eq!(add_two(1, 2), 3);</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    #[test]</span><br><span class="line">    fn add_test_2() &#123;</span><br><span class="line">        assert_eq!(add_two(2, 2), 4);</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    #[test]</span><br><span class="line">    fn one_hundred() &#123;</span><br><span class="line">        assert_eq!(100, 100);</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
-
-<p>对于这段代码，我们只想测试<code>one_hundred</code>这个函数，只需要对test命令指定运行one_hundred即可</p>
-<div class="highlight-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="code"><pre><span class="line">cargo test one_hundred</span><br></pre></td></tr></table></figure></div>
-
-<p>输出如下：</p>
-<div class="highlight-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="code"><pre><span class="line">running 1 test</span><br><span class="line">test tests::one_hundred ... ok</span><br><span class="line"></span><br><span class="line">test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 2 filtered out; finished in 0.00s</span><br></pre></td></tr></table></figure></div>
-
-<p>这里显示<code>2 filtered out</code>，代表有两个测试用例被我们过滤掉了。</p>
-<p>当然，这个方法也并不是只能运行一个测试函数，也可以通过部分匹配的方法执行多个名称里包含相同字符串的测试函数，例如：</p>
-<div class="highlight-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="code"><pre><span class="line">cargo test add        </span><br><span class="line"></span><br><span class="line">running 2 tests</span><br><span class="line">test tests::add_test_1 ... ok</span><br><span class="line">test tests::add_test_2 ... ok</span><br><span class="line"></span><br><span class="line">test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 1 filtered out; finished in 0.00s</span><br></pre></td></tr></table></figure></div>
-
-<p>我们使用<code>cargo test add</code>命令，则可以测试所有名字里带<code>add</code>的测试函数，忽略掉了one_hundred函数。</p>
-<p>不过需要注意的是，这种方法一次只能使用一个参数进行匹配并测试，如果你想同时用多个规则匹配多类的测试函数，就需要用其他方法了。</p>
-<h2 id="通过显示指定来忽略某些测试"><a href="#通过显示指定来忽略某些测试" class="headerlink" title="通过显示指定来忽略某些测试"></a>通过显示指定来忽略某些测试</h2><h3 id="忽略部分测试函数"><a href="#忽略部分测试函数" class="headerlink" title="忽略部分测试函数"></a>忽略部分测试函数</h3><p>当有部分测试函数执行特别耗时时，我们不想每次测试都执行这个函数，我们就可以通过<code>#[ignore]</code>属性来显示指定忽略这个测试函数。如：</p>
-<div class="highlight-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="code"><pre><span class="line">fn add_two(a: i32, b: i32) -&gt; i32 &#123;</span><br><span class="line">    a + b</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"></span><br><span class="line">#[cfg(test)]</span><br><span class="line">mod tests &#123;</span><br><span class="line">    use super::*;</span><br><span class="line"></span><br><span class="line">    #[test]</span><br><span class="line">    fn add_test_1() &#123;</span><br><span class="line">        assert_eq!(add_two(1, 2), 3);</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    #[test]</span><br><span class="line">    #[ignore]</span><br><span class="line">    fn add_test_2() &#123;</span><br><span class="line">        assert_eq!(add_two(2, 2), 4);</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    #[test]</span><br><span class="line">    fn one_hundred() &#123;</span><br><span class="line">        assert_eq!(100, 100);</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
-
-<p>此时我们直接执行<code>cargo test</code>，输出如下</p>
-<div class="highlight-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="code"><pre><span class="line">running 3 tests</span><br><span class="line">test tests::add_test_2 ... ignored</span><br><span class="line">test tests::add_test_1 ... ok</span><br><span class="line">test tests::one_hundred ... ok</span><br><span class="line"></span><br><span class="line">test result: ok. 2 passed; 0 failed; 1 ignored; 0 measured; 0 filtered out; finished in 0.00s</span><br><span class="line"></span><br><span class="line">   Doc-tests adder</span><br></pre></td></tr></table></figure></div>
-
-<p>可见<code>add_test_2</code>函数被忽略不执行了，提示1 ignored。</p>
-<h3 id="单独执行被忽略的测试函数"><a href="#单独执行被忽略的测试函数" class="headerlink" title="单独执行被忽略的测试函数"></a>单独执行被忽略的测试函数</h3><p>如果我们想单独执行这些被忽略的函数，则可以使用<code>--ignored</code>命令</p>
-<div class="highlight-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="code"><pre><span class="line">cargo test -- --ignored</span><br><span class="line"></span><br><span class="line">running 1 test</span><br><span class="line">test tests::add_test_2 ... ok</span><br><span class="line"></span><br><span class="line">test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 2 filtered out; finished in 0.00s</span><br></pre></td></tr></table></figure></div>
-
-<p>可见，只有<code>add_test_2</code>被执行了。</p>
-<h1 id="测试的组织结构"><a href="#测试的组织结构" class="headerlink" title="测试的组织结构"></a>测试的组织结构</h1><p>测试通常分为两类，单元测试和集成测试。单元测试小而专注，集中于测试一个私有接口或模块；集成测试则独立于代码库之外，正常的从外部调用公共接口，一次测试可能使用多个模块</p>
-<h2 id="单元测试"><a href="#单元测试" class="headerlink" title="单元测试"></a>单元测试</h2><p>单元测试的目的在于将一小段代码单独隔离开来，快速确定代码结果是否符合预期。一般来说，单元测试的代码<strong>和需要测试的代码存放在同一文件中</strong>。同时也约定俗成的在每个源代码文件里都会新建一个tests模块来存放测试函数，并使用cfg(test)来标注。</p>
-<h3 id="测试模块和-cfg-test"><a href="#测试模块和-cfg-test" class="headerlink" title="测试模块和#[cfg(test)]"></a>测试模块和#[cfg(test)]</h3><p><code>#[cfg(test)]</code>旨在让Rust只在执行Cargo test命令的时候编译和运行这段代码，而在cargo build的时候剔除掉它们，只用于测试，节省编译时间与空间，使得我们可以更方便的把测试代码和源代码放在同一个文件里。（集成测试时一般不需要标注，因为集成测试一般是独立的一个文件）</p>
-<p>我们之前编写的测试模块就使用了这个属性</p>
-<div class="highlight-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="code"><pre><span class="line">#[cfg(test)]</span><br><span class="line">mod tests &#123;</span><br><span class="line">    use super::*;</span><br><span class="line"></span><br><span class="line">    #[test]</span><br><span class="line">    fn it_works() &#123;</span><br><span class="line">        let result = add(2, 2);</span><br><span class="line">        assert_eq!(result, 4);</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
-
-<h3 id="测试私有函数"><a href="#测试私有函数" class="headerlink" title="测试私有函数"></a>测试私有函数</h3><p>是不是应该测试私有函数一直有争议，不管你觉得要不要，但Rust提供了方法供你方便的测试。</p>
-<div class="highlight-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="code"><pre><span class="line">fn add(left: usize, right: usize) -&gt; usize &#123;</span><br><span class="line">    left + right</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">#[cfg(test)]</span><br><span class="line">mod tests &#123;</span><br><span class="line">    use super::*;</span><br><span class="line"></span><br><span class="line">    #[test]</span><br><span class="line">    fn it_works() &#123;</span><br><span class="line">        let result = add(2, 2);</span><br><span class="line">        assert_eq!(result, 4);</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
-
-<p>以上代码中的add没有标注pub关键字，也就是私有的，但因为Rust的测试代码本身也属于Rust代码，所以可以通过use的方法把私有的函数引入当前作用域来测试，也就是对应的代码里的<code>use super::*;</code></p>
-<h2 id="集成测试"><a href="#集成测试" class="headerlink" title="集成测试"></a>集成测试</h2><p>集成测试通常是新建一个tests目录，只调用对外公开的那部分接口。</p>
-<h3 id="tests目录"><a href="#tests目录" class="headerlink" title="tests目录"></a>tests目录</h3><p>tests目录需要和src文件夹并列，Cargo会自动在这个目录下面寻找测试文件。</p>
-<p>现在，我们新建一个<code>tests/integration_test.rs</code>文件，保留之前的lib.rs代码(add函数如果改了私有记得改回公有)，并编写测试代码。</p>
-<div class="highlight-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="code"><pre><span class="line">use adder;</span><br><span class="line"></span><br><span class="line">#[test]</span><br><span class="line">fn add_two() &#123;</span><br><span class="line">    assert_eq!(adder::add(2, 2), 4);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
-
-<p>集成测试就不需要<code>#[cfg(test)]</code>了，Rust有单独为tests目录做处理，不会build这个目录下的文件。</p>
-<p>接下来，我们再执行以下Cargo test，看看输出</p>
-<div class="highlight-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="code"><pre><span class="line">cargo test</span><br><span class="line">   Compiling adder v0.1.0 (E:\Code\rust\adder)</span><br><span class="line">    Finished test [unoptimized + debuginfo] target(s) in 0.32s</span><br><span class="line">     Running unittests src\lib.rs (target\debug\deps\adder-0a86cd050490705e.exe)</span><br><span class="line"></span><br><span class="line">running 1 test</span><br><span class="line">test tests::it_works ... ok</span><br><span class="line"></span><br><span class="line">test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s</span><br><span class="line"></span><br><span class="line">     Running tests\integration_test.rs (target\debug\deps\integration_test-57f19c149db40d76.exe)</span><br><span class="line"></span><br><span class="line">running 1 test</span><br><span class="line">test add_two ... ok</span><br><span class="line"></span><br><span class="line">test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s</span><br><span class="line"></span><br><span class="line">   Doc-tests adder</span><br><span class="line"></span><br><span class="line">running 0 tests</span><br><span class="line"></span><br><span class="line">test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s</span><br></pre></td></tr></table></figure></div>
-
-<p>我们可以看到输出里</p>
-<ol>
-<li>先输出了单元测试的结果，<code>test tests::it_works … ok</code>，每行输出一个单元测试结果</li>
-<li>再输出集成测试的结果，<code>Running tests\integration_test.rs</code>，表示正在测试哪个文件的测试模块，后续跟着这个文件的测试结果</li>
-<li>最后是文档测试</li>
-</ol>
-<p>当编写的测试代码越多，输出也就会越多越杂，所以我们也可以使用<code>--test</code>参数指定集成测试的文件名，单独进行测试。如：<code>cargo test --test integration_test</code></p>
-<h3 id="在集成测试中使用子模块"><a href="#在集成测试中使用子模块" class="headerlink" title="在集成测试中使用子模块"></a>在集成测试中使用子模块</h3><p>测试模块也和普通模块差不多，可以把函数分解到不同文件不同子目录里，当我们需要测试内容越来越多的时候，就会需要这么做。</p>
-<p>但因为测试的特殊性，rust会把每个集成测试的文件编译成独立的包来隔离作用域，模拟用户实际的使用环境，这就意味着我们以前在src目录下管理文件的方法并不完全适用于tests目录了。</p>
-<p>例如，我们需要编写一个common.rs文件，并且编写一个setup函数，这个函数将会用在多个不同的测试文件里使用，如</p>
-<div class="highlight-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="code"><pre><span class="line">pub fn setup()&#123;</span><br><span class="line">    // 一些测试所需要初始化的数据</span><br><span class="line">    a = 1;</span><br><span class="line">    a</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
-
-<p>我们执行cargo test时会有以下输出：</p>
-<div class="highlight-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="code"><pre><span class="line">     Running tests\common.rs (target\debug\deps\common-15055e88a26e37ec.exe)</span><br><span class="line"></span><br><span class="line">running 0 tests</span><br><span class="line"></span><br><span class="line">test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s</span><br></pre></td></tr></table></figure></div>
-
-<p>可以发现，即便我们没有在common.rs里写任何测试函数，它依旧会将它作为测试文件执行，并输出无意义的running 0 tests。这明显不是我们所希望的，那如何解决呢？</p>
-<p>我们可以使用mod.rs文件，把common.rs的文件内容移到tests&#x2F;common&#x2F;mod.rs里面，这样的意思是让Rust把common视作一个模块，而不是集成测试文件。</p>
-<p>于是，我们就可以通过mod关键字引入common模块并使用其中的函数，例如</p>
-<div class="highlight-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="code"><pre><span class="line">// tests/integration_test.rs</span><br><span class="line">use adder;</span><br><span class="line"></span><br><span class="line">mod common;</span><br><span class="line"></span><br><span class="line">#[test]</span><br><span class="line">fn add_two() &#123;</span><br><span class="line">    common::setup();</span><br><span class="line">    assert_eq!(adder::add(2, 2), 4);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
-
-<p>此时再运行cargo test，就不会出现common相关的测试输出了。</p>
-<h3 id="二进制包的集成测试"><a href="#二进制包的集成测试" class="headerlink" title="二进制包的集成测试"></a>二进制包的集成测试</h3><p>如果我们的项目只有src&#x2F;main.rs而没有src&#x2F;lib.rs的话，是没有办法在tests中进行集成测试的，因为只有把代码用lib.rs文件指定为一个代码包crate，才能把函数暴露给其他包来使用，而main.rs对应的是二进制包，只能单独执行自己。</p>
-<p>所以Rust的二进制项目通常会把逻辑编写在src&#x2F;lib.rs里，main.rs只对lib.rs的内容进行简单的调用。</p>
-<h1 id="总结"><a href="#总结" class="headerlink" title="总结"></a>总结</h1><p>没什么好总结的，下一章写项目去了。</p>
-]]></content>
-      <categories>
-        <category>编程/语言</category>
-      </categories>
-      <tags>
-        <tag>Rust</tag>
-      </tags>
-  </entry>
-  <entry>
     <title>【Rust 学习记录】10. 泛型、trait与生命周期</title>
     <url>/2023/05/08/%E3%80%90Rust-%E5%AD%A6%E4%B9%A0%E8%AE%B0%E5%BD%95%E3%80%9110-%E6%B3%9B%E5%9E%8B%E3%80%81trait%E4%B8%8E%E7%94%9F%E5%91%BD%E5%91%A8%E6%9C%9F/</url>
     <content><![CDATA[<h1 id="泛型"><a href="#泛型" class="headerlink" title="泛型"></a>泛型</h1><p>泛型是一种具体类型或者其他属性的抽象替代，通常用来减少代码的重复，接下来将从泛型的几个实际应用场景开始介绍泛型</p>
@@ -414,6 +243,177 @@
 <li>定义了一个泛型<code>T</code></li>
 <li>约束了泛型<code>T</code>只能是实现了<code>Display</code>这个trait的类型，方便后续直接使用<code>println!</code>输出</li>
 </ol>
+]]></content>
+      <categories>
+        <category>编程/语言</category>
+      </categories>
+      <tags>
+        <tag>Rust</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>【Rust 学习记录】11. 编写自动化测试</title>
+    <url>/2023/05/09/%E3%80%90Rust-%E5%AD%A6%E4%B9%A0%E8%AE%B0%E5%BD%95%E3%80%9111-%E7%BC%96%E5%86%99%E8%87%AA%E5%8A%A8%E5%8C%96%E6%B5%8B%E8%AF%95/</url>
+    <content><![CDATA[<blockquote>
+<p>这一章讲的就是怎么在Rust编写单元测试代码，这一部分的思想不仅适用于Rust，在绝大多数语言都是有用武之地的</p>
+</blockquote>
+<h1 id="如何编写测试"><a href="#如何编写测试" class="headerlink" title="如何编写测试"></a>如何编写测试</h1><h2 id="测试代码的构成"><a href="#测试代码的构成" class="headerlink" title="测试代码的构成"></a>测试代码的构成</h2><h3 id="构成"><a href="#构成" class="headerlink" title="构成"></a>构成</h3><p>通用测试代码通常包括三个部分</p>
+<ol>
+<li>准备所需的数据或者前置状态</li>
+<li>调用需要测试的代码</li>
+<li>使用断言，判断运行结果是否和我们期望的一致</li>
+</ol>
+<p>在Rust中，有专门用于编写测试代码的相关功能，包含test属性，测试宏，should_panic属性等等</p>
+<p>在最简单的情况下，Rust中的测试就是一个标注有<code>test</code>属性的函数。只需要将<code>#[test]</code>添加到函数的关键字<code>fn</code>上，就能使用<code>cargo test</code>命令来运行测试。</p>
+<p>测试命令会构建一个可执行文件，调用所有标注了test的函数，生成相关报告。</p>
+<blockquote>
+<p>PS：</p>
+<p><strong>属性</strong>是一种修饰代码的一种元数据，例如之前为了输出结构体时，加入的<code>#[derive(Debug)]</code>就是一个属性，声明属性后，会为下面的代码自动生成一些实现，如<code>#[derive(Debug)]</code>修饰结构体时，就会为结构体生成Debug trait的实现</p>
+</blockquote>
+<h3 id="初次尝试"><a href="#初次尝试" class="headerlink" title="初次尝试"></a>初次尝试</h3><p>接下来我们就试试怎么测试</p>
+<p>首先新建一个名为adder的项目<code>cargo new adder --lib</code>(–lib指生成lib.rs文件)</p>
+<p>可能是版本比较新，lib.rs里直接生成有了以下代码</p>
+<div class="highlight-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="code"><pre><span class="line">pub fn add(left: usize, right: usize) -&gt; usize &#123;</span><br><span class="line">    left + right</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">#[cfg(test)]</span><br><span class="line">mod tests &#123;</span><br><span class="line">    use super::*;</span><br><span class="line"></span><br><span class="line">    #[test]</span><br><span class="line">    fn it_works() &#123;</span><br><span class="line">        let result = add(2, 2);</span><br><span class="line">        assert_eq!(result, 4);</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
+
+<p>我们先忽略一些没讲过的关键词，这段代码里我们定义了一个<code>it_works</code>函数，并标注为测试函数，然后使用断言判断<code>add</code>函数的结果是否正确的等于4。在了解了大概功能之后，我们直接运行测试看看</p>
+<div class="highlight-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="code"><pre><span class="line">cargo test</span><br><span class="line">   Compiling adder v0.1.0 (E:\Code\rust\adder)</span><br><span class="line">    Finished test [unoptimized + debuginfo] target(s) in 0.29s</span><br><span class="line">     Running unittests src\lib.rs (target\debug\deps\adder-0a86cd050490705e.exe)</span><br><span class="line"></span><br><span class="line">running 1 test</span><br><span class="line">test tests::it_works ... ok</span><br><span class="line"></span><br><span class="line">test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s</span><br><span class="line"></span><br><span class="line">   Doc-tests adder</span><br><span class="line"></span><br><span class="line">running 0 tests</span><br><span class="line"></span><br><span class="line">test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s</span><br></pre></td></tr></table></figure></div>
+
+<p>对应的测试结果如上</p>
+<ul>
+<li>passed: 测试通过的函数数量，我们这里只有一个it_works函数，且测试通过，所以为1</li>
+<li>failed: 测试失败的函数数量</li>
+<li>ignored: 被标记为忽略的测试函数，后面会提</li>
+<li>measured: Rust还提供了衡量函数性能的benchmark方法，不过编写书的时候似乎这部分还不完善，所以不会有讲解，想了解需要自行学习</li>
+<li>filtered out：被过滤掉的测试函数</li>
+<li>Doc-tests：文档测试，这是个很好用的特性，可以防止你在修改了函数之后，忘记修改自己的文档，保证文档能和实际代码同步。</li>
+</ul>
+<p>测试时，每一个测试函数都是运行在独立的线程里的，所以发生panic时并不会影响其他的测试，我们可以写一个错误的函数看看</p>
+<div class="highlight-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="code"><pre><span class="line">pub fn add(left: usize, right: usize) -&gt; usize &#123;</span><br><span class="line">    left + right</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">#[cfg(test)]</span><br><span class="line">mod tests &#123;</span><br><span class="line">    use super::*;</span><br><span class="line"></span><br><span class="line">    #[test]</span><br><span class="line">    fn error() &#123;</span><br><span class="line">        let result = add(3, 2);</span><br><span class="line">        assert_eq!(result, 4);</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    #[test]</span><br><span class="line">    fn it_works() &#123;</span><br><span class="line">        let result = add(2, 2);</span><br><span class="line">        assert_eq!(result, 4);</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
+
+<p>输出结果：</p>
+<div class="highlight-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="code"><pre><span class="line">cargo test</span><br><span class="line">   Compiling adder v0.1.0 (E:\Code\rust\adder)</span><br><span class="line">    Finished test [unoptimized + debuginfo] target(s) in 0.24s</span><br><span class="line">     Running unittests src\lib.rs (target\debug\deps\adder-0a86cd050490705e.exe)</span><br><span class="line"></span><br><span class="line">running 2 tests</span><br><span class="line">test tests::it_works ... ok</span><br><span class="line">test tests::error ... FAILED</span><br><span class="line"></span><br><span class="line">failures:</span><br><span class="line"></span><br><span class="line">---- tests::error stdout ----</span><br><span class="line">thread &#x27;tests::error&#x27; panicked at &#x27;assertion failed: `(left == right)`</span><br><span class="line">  left: `5`,</span><br><span class="line"> right: `4`&#x27;, src\lib.rs:18:9</span><br><span class="line">note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace</span><br><span class="line"></span><br><span class="line"></span><br><span class="line">failures:</span><br><span class="line">    tests::error</span><br><span class="line"></span><br><span class="line">test result: FAILED. 1 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s</span><br><span class="line"></span><br><span class="line">error: test failed, to rerun pass `--lib`</span><br></pre></td></tr></table></figure></div>
+
+<p>可以看见，error的panic并不影响it_works的测试通过。</p>
+<h2 id="assert-宏"><a href="#assert-宏" class="headerlink" title="assert!宏"></a>assert!宏</h2><h3 id="assert"><a href="#assert" class="headerlink" title="assert!"></a>assert!</h3><p><code>assert!</code>宏主要的功能是用来确保某个值为<code>true</code>，所以常被用于测试中。如<code>a&gt;b</code>等场景，返回的是一个bool值，就完美的符合assert!的使用场景，可以使用assert!进行测试，例如</p>
+<div class="highlight-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="code"><pre><span class="line">pub fn cmp(a: i32, b: i32) -&gt; bool &#123;</span><br><span class="line">    if a&gt;b&#123;</span><br><span class="line">        true</span><br><span class="line">    &#125;</span><br><span class="line">    else&#123;</span><br><span class="line">        false</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">#[cfg(test)]</span><br><span class="line">mod tests &#123;</span><br><span class="line">    use super::*;</span><br><span class="line"></span><br><span class="line">    #[test]</span><br><span class="line">    fn cmp_test()&#123;</span><br><span class="line">        let result = cmp(3, 2);</span><br><span class="line">        assert!(result);</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
+
+<h3 id="assert-eq-和assert-ne"><a href="#assert-eq-和assert-ne" class="headerlink" title="assert_eq!和assert_ne!"></a>assert_eq!和assert_ne!</h3><p>那如果返回值不是bool值呢？前面也出现过了，我们可以使用<code>assert_eq!</code>或者<code>assert_ne!</code>来断言两个值是否相等。</p>
+<p>eq则对应的只有相等才能通过断言，ne则对应的只有不相等才能通过断言，用例见上面的add测试即可。</p>
+<p><strong>但是注意</strong>，assert_eq!和assert_ne!使用了<code>==</code>和<code>!=</code>来实现是否相等的判断，也就意味着，传入这两个宏的参数是必须实现了<code>PartialEq</code>这个trait的。同时，我们可见错误的输出中会打印出详细的不相等原因，也就是说它还同时需要实现了<code>Debug</code>宏帮助打印输出。一般绝大部分参数都是满足要求的，自定义的结构体时需要注意。</p>
+<blockquote>
+<p>之前提到过属性这个概念，会为你自动实现一些功能，实际上PartialEq和Debug作为可派生的宏，也内置了属性的实现，你只需要在自己定义的结构体上加上<code>#[derive(PartialEq, Debug)]</code>，就能自动帮你实现这两个宏</p>
+</blockquote>
+<h3 id="自定义错误提示代码"><a href="#自定义错误提示代码" class="headerlink" title="自定义错误提示代码"></a>自定义错误提示代码</h3><p>上面我们说到assert_eq是会有详细输出的，告诉你怎么不相等了，帮助你排除bug，但普通的assert!只判断布尔值，所以没办法有详细的输出，这时候我们可以定制一个输出，使得错误提示更人性化一点。</p>
+<p>如下：</p>
+<div class="highlight-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="code"><pre><span class="line">pub fn cmp(a: i32, b: i32) -&gt; bool &#123;</span><br><span class="line">    if a&gt;b&#123;</span><br><span class="line">        true</span><br><span class="line">    &#125;</span><br><span class="line">    else&#123;</span><br><span class="line">        false</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">#[cfg(test)]</span><br><span class="line">mod tests &#123;</span><br><span class="line">    use super::*;</span><br><span class="line"></span><br><span class="line">    #[test]</span><br><span class="line">    fn cmp_test()&#123;</span><br><span class="line">        let a = 2;</span><br><span class="line">        let b = 3;</span><br><span class="line">        let result = cmp(a, b);</span><br><span class="line">        assert!(result, &quot;&#123;&#125; is not bigger than &#123;&#125;&quot;, a, b);</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
+
+<p>和一般不一样，我们不需要用什么格式化字符串的方法先格式化一个字符串，再传入这个字符串，断言支持直接使用格式化的语法。这段代码的输出如下</p>
+<div class="highlight-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="code"><pre><span class="line">running 1 test</span><br><span class="line">thread &#x27;tests::cmp_test&#x27; panicked at &#x27;2 is not bigger than 3&#x27;, src\lib.rs:23:9</span><br><span class="line">stack backtrace:</span><br></pre></td></tr></table></figure></div>
+
+<p>可见报错提示相对于单纯的panicked at更人性化了一些。</p>
+<p>当然，自定义输出也支持在assert_eq和assert_ne里使用</p>
+<h2 id="should-panic"><a href="#should-panic" class="headerlink" title="should_panic"></a>should_panic</h2><p>should_panic也是一个属性，用来测试代码是否能正确的在出错时发生panic。用例如下</p>
+<div class="highlight-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="code"><pre><span class="line">pub fn positive_num(a: i32) -&gt; i32 &#123;</span><br><span class="line">    if a &gt; 0 &#123;</span><br><span class="line">        a</span><br><span class="line">    &#125; else &#123;</span><br><span class="line">        panic!(&quot;&#123;&#125; is not positive&quot;, a)</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">#[cfg(test)]</span><br><span class="line">mod tests &#123;</span><br><span class="line">    use super::*;</span><br><span class="line"></span><br><span class="line">    #[test]</span><br><span class="line">    #[should_panic]</span><br><span class="line">    fn pos_test()&#123;</span><br><span class="line">        let a = -1;</span><br><span class="line">        positive_num(a);</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
+
+<p>这段代码用来检查一个数是否是正数，在不是时抛出panic，接下来我们使用<code>#[should_panic]</code>来检查程序是否正确的panic，这段代码运行测试通过没问题。</p>
+<p>接下来我们修改一下a的值，让程序不抛出panic，看看会发生什么</p>
+<div class="highlight-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="code"><pre><span class="line">running 1 test</span><br><span class="line">test tests::pos_test - should panic ... FAILED</span><br><span class="line"></span><br><span class="line">failures:</span><br><span class="line"></span><br><span class="line">---- tests::pos_test stdout ----</span><br><span class="line">note: test did not panic as expected</span><br><span class="line"></span><br><span class="line">failures:</span><br><span class="line">    tests::pos_test</span><br><span class="line"></span><br><span class="line">test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s</span><br><span class="line"></span><br><span class="line">error: test failed, to rerun pass `-p adder --lib`</span><br></pre></td></tr></table></figure></div>
+
+<p>测试失败，告诉你pos_test没有按照预期发生panic。这个特性可以用来检查你的代码是否能正确的处理报错，发生panic以阻止程序进一步运行，产生不可预估的后果。</p>
+<p>但是，单纯这么使用感觉有点含糊不清，因为程序发生panic的原因可能不是我们所预期的，假如其他一些我们不知道的原因抛出了panic，也会导致测试通过。所以我们可以添加一个可选参数<code>expected</code>，用来检查panic发生报错的输出信息里是否包含指定的文字。</p>
+<div class="highlight-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="code"><pre><span class="line">#[test]</span><br><span class="line">#[should_panic(expected = &quot;positive&quot;)]</span><br><span class="line">fn pos_test()&#123;</span><br><span class="line">    let a = -1;</span><br><span class="line">    positive_num(a);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
+
+<p>这时候，should_panic就会检查发生的panic输出的报错信息是否包含”positive”这个字符串，如果是，才会测试通过，输出如下：</p>
+<div class="highlight-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="code"><pre><span class="line">running 1 test</span><br><span class="line">thread &#x27;tests::pos_test&#x27; panicked at &#x27;-1 is not positive&#x27;, src\lib.rs:9:9</span><br><span class="line">stack backtrace:</span><br></pre></td></tr></table></figure></div>
+
+<p>可见，输出中也包含了报错的信息，更人性化了。</p>
+<h2 id="使用Result编写测试"><a href="#使用Result编写测试" class="headerlink" title="使用Result编写测试"></a>使用Result编写测试</h2><p>之前学习Result枚举的时候我们就知道了这东西是用来处理报错的，自然也就可以用来处理测试。使用时也很简单，我们只需要声明测试函数的返回值是Result，test命令就会自动根据Result的枚举结果来判断是否测试成功了。如：</p>
+<div class="highlight-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="code"><pre><span class="line">#[cfg(test)]</span><br><span class="line">mod tests &#123;</span><br><span class="line">    use super::*;</span><br><span class="line"></span><br><span class="line">    #[test]</span><br><span class="line">    fn it_works() -&gt; Result&lt;(), String&gt;&#123;</span><br><span class="line">        if 2+2 == 4 &#123;</span><br><span class="line">            Ok(())</span><br><span class="line">        &#125; else &#123;</span><br><span class="line">            Err(String::from(&quot;two plus two does not equal four&quot;))</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
+
+<p>使用Result编写测试函数的主要优势是可以使用问号表达式进行错误捕获，更方便我们去编写一些复杂的测试函数，可以让函数在任一时刻有错误被捕获到时，就返回报错。</p>
+<p>问号表达式的使用可见<a href="https://twosix.page/archives/345">【Rust 学习记录】9. 错误处理</a>的？运算符部分，这里就不再写代码举例了（主要书上没例子，我也懒的写）</p>
+<h1 id="控制测试的运行方式"><a href="#控制测试的运行方式" class="headerlink" title="控制测试的运行方式"></a>控制测试的运行方式</h1><p>这一部分主要是对cargo test命令的讲解，具体的运行方式，参数的使用等。</p>
+<p>cargo test的参数统一需要写在<code>--</code>后面，也就是说你想要使用<code>--help</code>显示参数文档时，需要使用以下命令</p>
+<div class="highlight-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="code"><pre><span class="line">cargo test -- --help</span><br></pre></td></tr></table></figure></div>
+
+<h2 id="并行或串行的执行代码"><a href="#并行或串行的执行代码" class="headerlink" title="并行或串行的执行代码"></a>并行或串行的执行代码</h2><p>默认情况下，测试是多线程并发执行的，这可以使测试更快速的完成，且相互之间不会影响结果。但如果测试间有相互依赖关系，则需要串行执行。例如两个测试用例同时在操作一个文件，一个测试在写内容，一个测试在读内容时，则容易导致测试结果不合预期。</p>
+<p>我们可以使用<code>--test-threads=1</code>来指定测试的线程数为1，即可实现串行执行，当然，你想执行的更快也可以指定更多的线程</p>
+<div class="highlight-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="code"><pre><span class="line">cargo test -- --test-threads=1</span><br></pre></td></tr></table></figure></div>
+
+<h2 id="显示函数的输出"><a href="#显示函数的输出" class="headerlink" title="显示函数的输出"></a>显示函数的输出</h2><p>默认情况下，test命令会捕获所有测试成功时的输出，也就是说，对于测试成功的函数，即使你使用了println!打印输出，你也无法在控制台看见你的输出，因为它被test命令捕获吞掉了。</p>
+<p>如果你想要在控制台显示你的输出，只需要用<code>--nocapture</code>设置不捕获输出即可</p>
+<div class="highlight-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="code"><pre><span class="line">cargo test -- --nocapture</span><br></pre></td></tr></table></figure></div>
+
+<h2 id="只运行部分特定名称的测试"><a href="#只运行部分特定名称的测试" class="headerlink" title="只运行部分特定名称的测试"></a>只运行部分特定名称的测试</h2><p>如果测试的函数越写越多，执行所有的测试可能很花时间，通常我们编写了一个新的功能并想进行测试的时候，我们只需要测试这一个功能就足够了，因此可以向test命令指定函数名称来进行测试。</p>
+<p>如：</p>
+<div class="highlight-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="code"><pre><span class="line">fn add_two(a: i32, b: i32) -&gt; i32 &#123;</span><br><span class="line">    a + b</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"></span><br><span class="line">#[cfg(test)]</span><br><span class="line">mod tests &#123;</span><br><span class="line">    use super::*;</span><br><span class="line"></span><br><span class="line">    #[test]</span><br><span class="line">    fn add_test_1() &#123;</span><br><span class="line">        assert_eq!(add_two(1, 2), 3);</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    #[test]</span><br><span class="line">    fn add_test_2() &#123;</span><br><span class="line">        assert_eq!(add_two(2, 2), 4);</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    #[test]</span><br><span class="line">    fn one_hundred() &#123;</span><br><span class="line">        assert_eq!(100, 100);</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
+
+<p>对于这段代码，我们只想测试<code>one_hundred</code>这个函数，只需要对test命令指定运行one_hundred即可</p>
+<div class="highlight-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="code"><pre><span class="line">cargo test one_hundred</span><br></pre></td></tr></table></figure></div>
+
+<p>输出如下：</p>
+<div class="highlight-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="code"><pre><span class="line">running 1 test</span><br><span class="line">test tests::one_hundred ... ok</span><br><span class="line"></span><br><span class="line">test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 2 filtered out; finished in 0.00s</span><br></pre></td></tr></table></figure></div>
+
+<p>这里显示<code>2 filtered out</code>，代表有两个测试用例被我们过滤掉了。</p>
+<p>当然，这个方法也并不是只能运行一个测试函数，也可以通过部分匹配的方法执行多个名称里包含相同字符串的测试函数，例如：</p>
+<div class="highlight-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="code"><pre><span class="line">cargo test add        </span><br><span class="line"></span><br><span class="line">running 2 tests</span><br><span class="line">test tests::add_test_1 ... ok</span><br><span class="line">test tests::add_test_2 ... ok</span><br><span class="line"></span><br><span class="line">test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 1 filtered out; finished in 0.00s</span><br></pre></td></tr></table></figure></div>
+
+<p>我们使用<code>cargo test add</code>命令，则可以测试所有名字里带<code>add</code>的测试函数，忽略掉了one_hundred函数。</p>
+<p>不过需要注意的是，这种方法一次只能使用一个参数进行匹配并测试，如果你想同时用多个规则匹配多类的测试函数，就需要用其他方法了。</p>
+<h2 id="通过显示指定来忽略某些测试"><a href="#通过显示指定来忽略某些测试" class="headerlink" title="通过显示指定来忽略某些测试"></a>通过显示指定来忽略某些测试</h2><h3 id="忽略部分测试函数"><a href="#忽略部分测试函数" class="headerlink" title="忽略部分测试函数"></a>忽略部分测试函数</h3><p>当有部分测试函数执行特别耗时时，我们不想每次测试都执行这个函数，我们就可以通过<code>#[ignore]</code>属性来显示指定忽略这个测试函数。如：</p>
+<div class="highlight-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="code"><pre><span class="line">fn add_two(a: i32, b: i32) -&gt; i32 &#123;</span><br><span class="line">    a + b</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"></span><br><span class="line">#[cfg(test)]</span><br><span class="line">mod tests &#123;</span><br><span class="line">    use super::*;</span><br><span class="line"></span><br><span class="line">    #[test]</span><br><span class="line">    fn add_test_1() &#123;</span><br><span class="line">        assert_eq!(add_two(1, 2), 3);</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    #[test]</span><br><span class="line">    #[ignore]</span><br><span class="line">    fn add_test_2() &#123;</span><br><span class="line">        assert_eq!(add_two(2, 2), 4);</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    #[test]</span><br><span class="line">    fn one_hundred() &#123;</span><br><span class="line">        assert_eq!(100, 100);</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
+
+<p>此时我们直接执行<code>cargo test</code>，输出如下</p>
+<div class="highlight-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="code"><pre><span class="line">running 3 tests</span><br><span class="line">test tests::add_test_2 ... ignored</span><br><span class="line">test tests::add_test_1 ... ok</span><br><span class="line">test tests::one_hundred ... ok</span><br><span class="line"></span><br><span class="line">test result: ok. 2 passed; 0 failed; 1 ignored; 0 measured; 0 filtered out; finished in 0.00s</span><br><span class="line"></span><br><span class="line">   Doc-tests adder</span><br></pre></td></tr></table></figure></div>
+
+<p>可见<code>add_test_2</code>函数被忽略不执行了，提示1 ignored。</p>
+<h3 id="单独执行被忽略的测试函数"><a href="#单独执行被忽略的测试函数" class="headerlink" title="单独执行被忽略的测试函数"></a>单独执行被忽略的测试函数</h3><p>如果我们想单独执行这些被忽略的函数，则可以使用<code>--ignored</code>命令</p>
+<div class="highlight-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="code"><pre><span class="line">cargo test -- --ignored</span><br><span class="line"></span><br><span class="line">running 1 test</span><br><span class="line">test tests::add_test_2 ... ok</span><br><span class="line"></span><br><span class="line">test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 2 filtered out; finished in 0.00s</span><br></pre></td></tr></table></figure></div>
+
+<p>可见，只有<code>add_test_2</code>被执行了。</p>
+<h1 id="测试的组织结构"><a href="#测试的组织结构" class="headerlink" title="测试的组织结构"></a>测试的组织结构</h1><p>测试通常分为两类，单元测试和集成测试。单元测试小而专注，集中于测试一个私有接口或模块；集成测试则独立于代码库之外，正常的从外部调用公共接口，一次测试可能使用多个模块</p>
+<h2 id="单元测试"><a href="#单元测试" class="headerlink" title="单元测试"></a>单元测试</h2><p>单元测试的目的在于将一小段代码单独隔离开来，快速确定代码结果是否符合预期。一般来说，单元测试的代码<strong>和需要测试的代码存放在同一文件中</strong>。同时也约定俗成的在每个源代码文件里都会新建一个tests模块来存放测试函数，并使用cfg(test)来标注。</p>
+<h3 id="测试模块和-cfg-test"><a href="#测试模块和-cfg-test" class="headerlink" title="测试模块和#[cfg(test)]"></a>测试模块和#[cfg(test)]</h3><p><code>#[cfg(test)]</code>旨在让Rust只在执行Cargo test命令的时候编译和运行这段代码，而在cargo build的时候剔除掉它们，只用于测试，节省编译时间与空间，使得我们可以更方便的把测试代码和源代码放在同一个文件里。（集成测试时一般不需要标注，因为集成测试一般是独立的一个文件）</p>
+<p>我们之前编写的测试模块就使用了这个属性</p>
+<div class="highlight-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="code"><pre><span class="line">#[cfg(test)]</span><br><span class="line">mod tests &#123;</span><br><span class="line">    use super::*;</span><br><span class="line"></span><br><span class="line">    #[test]</span><br><span class="line">    fn it_works() &#123;</span><br><span class="line">        let result = add(2, 2);</span><br><span class="line">        assert_eq!(result, 4);</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
+
+<h3 id="测试私有函数"><a href="#测试私有函数" class="headerlink" title="测试私有函数"></a>测试私有函数</h3><p>是不是应该测试私有函数一直有争议，不管你觉得要不要，但Rust提供了方法供你方便的测试。</p>
+<div class="highlight-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="code"><pre><span class="line">fn add(left: usize, right: usize) -&gt; usize &#123;</span><br><span class="line">    left + right</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">#[cfg(test)]</span><br><span class="line">mod tests &#123;</span><br><span class="line">    use super::*;</span><br><span class="line"></span><br><span class="line">    #[test]</span><br><span class="line">    fn it_works() &#123;</span><br><span class="line">        let result = add(2, 2);</span><br><span class="line">        assert_eq!(result, 4);</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
+
+<p>以上代码中的add没有标注pub关键字，也就是私有的，但因为Rust的测试代码本身也属于Rust代码，所以可以通过use的方法把私有的函数引入当前作用域来测试，也就是对应的代码里的<code>use super::*;</code></p>
+<h2 id="集成测试"><a href="#集成测试" class="headerlink" title="集成测试"></a>集成测试</h2><p>集成测试通常是新建一个tests目录，只调用对外公开的那部分接口。</p>
+<h3 id="tests目录"><a href="#tests目录" class="headerlink" title="tests目录"></a>tests目录</h3><p>tests目录需要和src文件夹并列，Cargo会自动在这个目录下面寻找测试文件。</p>
+<p>现在，我们新建一个<code>tests/integration_test.rs</code>文件，保留之前的lib.rs代码(add函数如果改了私有记得改回公有)，并编写测试代码。</p>
+<div class="highlight-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="code"><pre><span class="line">use adder;</span><br><span class="line"></span><br><span class="line">#[test]</span><br><span class="line">fn add_two() &#123;</span><br><span class="line">    assert_eq!(adder::add(2, 2), 4);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
+
+<p>集成测试就不需要<code>#[cfg(test)]</code>了，Rust有单独为tests目录做处理，不会build这个目录下的文件。</p>
+<p>接下来，我们再执行以下Cargo test，看看输出</p>
+<div class="highlight-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="code"><pre><span class="line">cargo test</span><br><span class="line">   Compiling adder v0.1.0 (E:\Code\rust\adder)</span><br><span class="line">    Finished test [unoptimized + debuginfo] target(s) in 0.32s</span><br><span class="line">     Running unittests src\lib.rs (target\debug\deps\adder-0a86cd050490705e.exe)</span><br><span class="line"></span><br><span class="line">running 1 test</span><br><span class="line">test tests::it_works ... ok</span><br><span class="line"></span><br><span class="line">test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s</span><br><span class="line"></span><br><span class="line">     Running tests\integration_test.rs (target\debug\deps\integration_test-57f19c149db40d76.exe)</span><br><span class="line"></span><br><span class="line">running 1 test</span><br><span class="line">test add_two ... ok</span><br><span class="line"></span><br><span class="line">test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s</span><br><span class="line"></span><br><span class="line">   Doc-tests adder</span><br><span class="line"></span><br><span class="line">running 0 tests</span><br><span class="line"></span><br><span class="line">test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s</span><br></pre></td></tr></table></figure></div>
+
+<p>我们可以看到输出里</p>
+<ol>
+<li>先输出了单元测试的结果，<code>test tests::it_works … ok</code>，每行输出一个单元测试结果</li>
+<li>再输出集成测试的结果，<code>Running tests\integration_test.rs</code>，表示正在测试哪个文件的测试模块，后续跟着这个文件的测试结果</li>
+<li>最后是文档测试</li>
+</ol>
+<p>当编写的测试代码越多，输出也就会越多越杂，所以我们也可以使用<code>--test</code>参数指定集成测试的文件名，单独进行测试。如：<code>cargo test --test integration_test</code></p>
+<h3 id="在集成测试中使用子模块"><a href="#在集成测试中使用子模块" class="headerlink" title="在集成测试中使用子模块"></a>在集成测试中使用子模块</h3><p>测试模块也和普通模块差不多，可以把函数分解到不同文件不同子目录里，当我们需要测试内容越来越多的时候，就会需要这么做。</p>
+<p>但因为测试的特殊性，rust会把每个集成测试的文件编译成独立的包来隔离作用域，模拟用户实际的使用环境，这就意味着我们以前在src目录下管理文件的方法并不完全适用于tests目录了。</p>
+<p>例如，我们需要编写一个common.rs文件，并且编写一个setup函数，这个函数将会用在多个不同的测试文件里使用，如</p>
+<div class="highlight-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="code"><pre><span class="line">pub fn setup()&#123;</span><br><span class="line">    // 一些测试所需要初始化的数据</span><br><span class="line">    a = 1;</span><br><span class="line">    a</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
+
+<p>我们执行cargo test时会有以下输出：</p>
+<div class="highlight-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="code"><pre><span class="line">     Running tests\common.rs (target\debug\deps\common-15055e88a26e37ec.exe)</span><br><span class="line"></span><br><span class="line">running 0 tests</span><br><span class="line"></span><br><span class="line">test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s</span><br></pre></td></tr></table></figure></div>
+
+<p>可以发现，即便我们没有在common.rs里写任何测试函数，它依旧会将它作为测试文件执行，并输出无意义的running 0 tests。这明显不是我们所希望的，那如何解决呢？</p>
+<p>我们可以使用mod.rs文件，把common.rs的文件内容移到tests&#x2F;common&#x2F;mod.rs里面，这样的意思是让Rust把common视作一个模块，而不是集成测试文件。</p>
+<p>于是，我们就可以通过mod关键字引入common模块并使用其中的函数，例如</p>
+<div class="highlight-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="code"><pre><span class="line">// tests/integration_test.rs</span><br><span class="line">use adder;</span><br><span class="line"></span><br><span class="line">mod common;</span><br><span class="line"></span><br><span class="line">#[test]</span><br><span class="line">fn add_two() &#123;</span><br><span class="line">    common::setup();</span><br><span class="line">    assert_eq!(adder::add(2, 2), 4);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
+
+<p>此时再运行cargo test，就不会出现common相关的测试输出了。</p>
+<h3 id="二进制包的集成测试"><a href="#二进制包的集成测试" class="headerlink" title="二进制包的集成测试"></a>二进制包的集成测试</h3><p>如果我们的项目只有src&#x2F;main.rs而没有src&#x2F;lib.rs的话，是没有办法在tests中进行集成测试的，因为只有把代码用lib.rs文件指定为一个代码包crate，才能把函数暴露给其他包来使用，而main.rs对应的是二进制包，只能单独执行自己。</p>
+<p>所以Rust的二进制项目通常会把逻辑编写在src&#x2F;lib.rs里，main.rs只对lib.rs的内容进行简单的调用。</p>
+<h1 id="总结"><a href="#总结" class="headerlink" title="总结"></a>总结</h1><p>没什么好总结的，下一章写项目去了。</p>
 ]]></content>
       <categories>
         <category>编程/语言</category>
@@ -914,6 +914,192 @@
       </tags>
   </entry>
   <entry>
+    <title>【Rust 学习记录】5. 结构体</title>
+    <url>/2023/03/30/%E3%80%90Rust-%E5%AD%A6%E4%B9%A0%E8%AE%B0%E5%BD%95%E3%80%915-%E7%BB%93%E6%9E%84%E4%BD%93/</url>
+    <content><![CDATA[<h1 id="定义及实例化方式"><a href="#定义及实例化方式" class="headerlink" title="定义及实例化方式"></a>定义及实例化方式</h1><h2 id="定义和创建实例"><a href="#定义和创建实例" class="headerlink" title="定义和创建实例"></a>定义和创建实例</h2><p>定义方法和 C++ 是一模一样了，详见代码</p>
+<div class="highlight-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="code"><pre><span class="line">struct User&#123;</span><br><span class="line">  username: String,</span><br><span class="line">  email: String,</span><br><span class="line">  sign_in_count: u64,</span><br><span class="line">  active: bool,</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
+
+<p>实例化方法稍显不同，方法和定义差不多，指名道姓的赋值，优势是不用对应顺序，可读性强。访问方法就还是传统的点运算符</p>
+<div class="highlight-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="code"><pre><span class="line">struct User&#123;</span><br><span class="line">  username: String,</span><br><span class="line">  email: String,</span><br><span class="line">  sign_in_count: u64,</span><br><span class="line">  active: bool,</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">fn main() &#123;</span><br><span class="line">    let user1 = User&#123;</span><br><span class="line">       email: String::from(&quot;test@1.com&quot;),</span><br><span class="line">       username: String::from(&quot;haha&quot;),</span><br><span class="line">       sign_in_count: 1,</span><br><span class="line">       active: true,</span><br><span class="line">    &#125;;</span><br><span class="line">    println!(&quot;user1: &#123;&#125;&quot;, user1.email);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
+
+<p>同理，结构体也有可变与不可变一说，<strong>可变结构体，结构体所有变量可变，不可变结构体，结构体所有变量不可变，Rust 没有让结构体部分变量可变，部分不可变的说法</strong></p>
+<h2 id="一些语法糖"><a href="#一些语法糖" class="headerlink" title="一些语法糖"></a>一些语法糖</h2><h3 id="同名参数对应赋值"><a href="#同名参数对应赋值" class="headerlink" title="同名参数对应赋值"></a>同名参数对应赋值</h3><p>如果每次都要写一个 email: xxxx， username: xxxx 好像有点麻烦是吗？Rust 提供了一个简单的方法，<strong>当变量名和结构体内的字段名完全一样的时候，会对应赋值</strong>（有一说一，这个设计挺有想法的，语法糖+1）</p>
+<p>所以我们可以很轻松的给 User 写一个创建用的函数，这样就可以实现带默认值，轻松的构建结构体实例了</p>
+<div class="highlight-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="code"><pre><span class="line">struct User&#123;</span><br><span class="line">  username: String,</span><br><span class="line">  email: String,</span><br><span class="line">  sign_in_count: u64,</span><br><span class="line">  active: bool,</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">fn create_user(email: String, username: String) -&gt; User &#123;</span><br><span class="line">  User &#123;</span><br><span class="line">    email,</span><br><span class="line">    username,</span><br><span class="line">    active: true,</span><br><span class="line">    sign_in_count: 1,</span><br><span class="line">  &#125;</span><br><span class="line">  // 不写分号返回 User 变量</span><br><span class="line">&#125;</span><br><span class="line">fn main() &#123;</span><br><span class="line">    let user1 = create_user(String::from(&quot;hah@haha.com&quot;), String::from(&quot;haha&quot;));</span><br><span class="line">    println!(&quot;user1: &#123;&#125;&quot;, user1.email);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
+
+<h3 id="用之前的实例构造现在的实例"><a href="#用之前的实例构造现在的实例" class="headerlink" title="用之前的实例构造现在的实例"></a>用之前的实例构造现在的实例</h3><p>在一些情况下其实结构体内的实例都不需要怎么变动，就像上面的例子里，<code>sign_in_count</code> 和 <code>active</code> 参数都是采用同一个默认值来赋给所有实例的，那有没有一些方法能简化这种情况的代码书写呢？有的。</p>
+<div class="highlight-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="code"><pre><span class="line">fn main() &#123;</span><br><span class="line">    let user1 = create_user(String::from(&quot;hah@haha.com&quot;), String::from(&quot;haha&quot;));</span><br><span class="line">    let user2 = User &#123;</span><br><span class="line">        email: String::from(&quot;user2@haha.com&quot;),</span><br><span class="line">        username: String::from(&quot;user2&quot;),</span><br><span class="line">        ..user1</span><br><span class="line">    &#125;;</span><br><span class="line">    println!(&quot;user2: &#123;&#125;&quot;, user2.active);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
+
+<p><code>..user1</code> 就代表了剩下的值都和 <code>user1</code> 一样，把 <code>user1</code> 里对应字段的值赋给 <code>user2</code> 即可。（这个感觉不如函数封装性好吧，但可能也看情况）</p>
+<h2 id="元组结构体——没有字段名的结构体"><a href="#元组结构体——没有字段名的结构体" class="headerlink" title="元组结构体——没有字段名的结构体"></a>元组结构体——没有字段名的结构体</h2><p>其实就相当于给元组命个名字，适用于很多不需要给字段命名的情况下，例如颜色的RGB，大家都懂是吧，就用一个三元组命名 <code>Color</code> 就好了。定义方式如下</p>
+<div class="highlight-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="code"><pre><span class="line">struct Color(i8, i8, i8);</span><br><span class="line"></span><br><span class="line">fn main() &#123;</span><br><span class="line">    let black = Color(0, 0, 0);</span><br><span class="line">    println!(&quot;user2: &#123;&#125;&quot;, black.0);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
+
+<p>值得一提的是，定义成结构体后也是用点运算符访问变量，而不是 [] 运算符了</p>
+<h2 id="空结构体——没有字段的结构体"><a href="#空结构体——没有字段的结构体" class="headerlink" title="空结构体——没有字段的结构体"></a>空结构体——没有字段的结构体</h2><p>当你想创建一个空结构体的时候，也是不会报错的，原理说是和空元组相似，然后在某些方面会有用，后续再介绍。</p>
+<p>我也不太懂，就不多说了，后面再看吧。</p>
+<h1 id="结构体的所有权"><a href="#结构体的所有权" class="headerlink" title="结构体的所有权"></a>结构体的所有权</h1><p>在上面举的这个例子中</p>
+<div class="highlight-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="code"><pre><span class="line">struct User&#123;</span><br><span class="line">  username: String,</span><br><span class="line">  email: String,</span><br><span class="line">  sign_in_count: u64,</span><br><span class="line">  active: bool,</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">fn main() &#123;</span><br><span class="line">    let user1 = User&#123;</span><br><span class="line">       email: String::from(&quot;test@1.com&quot;),</span><br><span class="line">       username: String::from(&quot;haha&quot;),</span><br><span class="line">       sign_in_count: 1,</span><br><span class="line">       active: true,</span><br><span class="line">    &#125;;</span><br><span class="line">    println!(&quot;user1: &#123;&#125;&quot;, user1.email);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
+
+<p>我们定义的所有字段都是具有值的所有权的，所以结构体实例能具有所有字段数据的所有权，能伴随着自己直到离开作用域，但也有不具有所有权的定义方式</p>
+<div class="highlight-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="code"><pre><span class="line">struct User&#123;</span><br><span class="line">  username: &amp;str,</span><br><span class="line">  email: &amp;str,</span><br><span class="line">  sign_in_count: u64,</span><br><span class="line">  active: bool,</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">fn main() &#123;</span><br><span class="line">    let user1 = User&#123;</span><br><span class="line">       email: String::from(&quot;test@1.com&quot;),</span><br><span class="line">       username: String::from(&quot;haha&quot;),</span><br><span class="line">       sign_in_count: 1,</span><br><span class="line">       active: true,</span><br><span class="line">    &#125;;</span><br><span class="line">    println!(&quot;user1: &#123;&#125;&quot;, user1.email);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
+
+<p>但这种方式现在是没办法定义通过的，报错提示需要指定生命周期，这个涉及到了生命周期，所以就放到后面介绍了。</p>
+<h1 id="初试trait——为结构体增加更多有用的功能"><a href="#初试trait——为结构体增加更多有用的功能" class="headerlink" title="初试trait——为结构体增加更多有用的功能"></a>初试trait——为结构体增加更多有用的功能</h1><p>说实话我不知道这个trait是什么意思，大概查了一下，是 特性（性状）的意思，用来定义一个类型可能和其他类型共享的功能，或许差不多相当于和 python 里的 <strong>xxx</strong> 差不多吗？但看样子还能自己定义的样子。先不管吧，大概了解一下概念，先学着。</p>
+<h2 id="打印结构体"><a href="#打印结构体" class="headerlink" title="打印结构体"></a>打印结构体</h2><p>用过 python 的应该都知道 python 类有个 <code>__str__</code> 函数，可以定义一个类的字符串格式，方便输出成人类能查看的格式，而不是一串地址，Rust 的结构体也有这个功能—— <code>Display</code>。</p>
+<p>我们可以先跑一下这段代码</p>
+<div class="highlight-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="code"><pre><span class="line">struct rectangle&#123;</span><br><span class="line">  w: u32,</span><br><span class="line">  h: u32</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">fn main() &#123;</span><br><span class="line">  let rect = rectangle&#123;w: 10, h: 20&#125;;</span><br><span class="line">  println!(&quot;rectangle is &#123;&#125;&quot;, rect);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
+
+<p>可以看到一个报错</p>
+<div class="highlight-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="code"><pre><span class="line">= help: the trait `std::fmt::Display` is not implemented for `rectangle`</span><br><span class="line">= note: in format strings you may be able to use `&#123;:?&#125;` (or &#123;:#?&#125; for pretty-print) instead</span><br></pre></td></tr></table></figure></div>
+
+<p><code>the trait std::fmt::Display is not implemented for rectangle </code>意思就是这个结构体还没实现 <code>Display</code> 这个方法，也就是说，<code>println!</code> 这个宏在输出的时候，还会调用一下类型的格式化函数，来进行指定的输出，之前我们用的基本类型都是默认实现了 <code>Display</code> 方法的，而这个 <code>rectangle</code> 是我们自己定义的，没有 <code>Display</code> 方法，<code>println!</code> 就不知道怎么格式化了，所以就报错。</p>
+<p>但除了这个还有一个有意思的提示 <code>in format strings you may be able to use &#123;:?&#125; (or &#123;:#?&#125; for pretty-print) instead</code> 。这句话告诉我们，可以用 <code>&#123;:?&#125;&#123;:#?&#125;</code> 来整一个漂亮的输出？啥意思？写一下吧~</p>
+<div class="highlight-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="code"><pre><span class="line">= help: the trait `Debug` is not implemented for `rectangle`</span><br><span class="line">= note: add `#[derive(Debug)]` to `rectangle` or manually `impl Debug for rectangle`</span><br></pre></td></tr></table></figure></div>
+
+<p>被骗了，还是报错。但我们发现了另一个有意思的 trait—— <code>Debug</code> 。也就是说，Rust 对格式化的方法区分了两种，Debug 是专门面向开发者调试时的输出用格式。我超，什么是现代化语法啊（后仰）。这种特性真能派上不少用途。</p>
+<p>提示里说，要么添加<code> [derive(Debug)]</code> 要么自己实现一个 <code>Debug</code> 我们可以先添加一下这个试试</p>
+<div class="highlight-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="code"><pre><span class="line">#[derive(Debug)]</span><br><span class="line">struct rectangle&#123;</span><br><span class="line">  w: u32,</span><br><span class="line">  h: u32</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">fn main() &#123;</span><br><span class="line">  let rect = rectangle&#123;w: 10, h: 20&#125;;</span><br><span class="line">  println!(&quot;rectangle is &#123;:?&#125;&quot;, rect);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
+
+<p>添加在函数头，进行一个 <code>Debug</code> 注解就可以了，这次运行就不会报错了。我们来看看输出是怎样的</p>
+<div class="highlight-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="code"><pre><span class="line">rectangle is rectangle &#123; w: 10, h: 20 &#125;</span><br></pre></td></tr></table></figure></div>
+
+<p>可见 Rust 标准的 <code>Debug</code> 格式化输出就是 结构体名{所有字段名: 对应的值}，嗯，挺不错的，不用自己手动一个一个输出了。我们再来看看之前提示里提到的另一个 <code>&#123;:#?&#125;</code> 吧</p>
+<div class="highlight-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="code"><pre><span class="line">rectangle is rectangle &#123;</span><br><span class="line">    w: 10,</span><br><span class="line">    h: 20,</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
+
+<p>这个输出会更好看点，有了一定的排版，对于复杂的结构体会更有可读性。</p>
+<p>好，书上的 trait 介绍就到这里结束了（是不是把一开始的 <code>Format</code> 忘了），它说到第 10 章的时候会更详细的介绍 trait 的时候，可以通过像这种对结构体进行 trait 注解的方式提供很多功能，包括自带的，甚至可以自己自定义，确实期待。</p>
+<h1 id="方法"><a href="#方法" class="headerlink" title="方法"></a>方法</h1><p>结构体，或者说类，当然不能少了函数，书上对普通函数和结构体里的函数区分了一下概念，结构体内的函数叫方法，因为方法的定义有局限性，例如参数要有self，只能定义在结构体或trait之类的地方，属于是一个子集吧。我们也严谨点，区分一下吧。</p>
+<h2 id="定义"><a href="#定义" class="headerlink" title="定义"></a>定义</h2><div class="highlight-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="code"><pre><span class="line">#[derive(Debug)]</span><br><span class="line">struct Rectangle&#123;</span><br><span class="line">  w: u32,</span><br><span class="line">  h: u32</span><br><span class="line">&#125;</span><br><span class="line">impl Rectangle &#123;</span><br><span class="line">    fn area(&amp;self) -&gt; u32 &#123;</span><br><span class="line">       self.w * self.h</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">fn main() &#123;</span><br><span class="line">  let rect = Rectangle&#123;w: 10, h: 20&#125;;</span><br><span class="line">  println!(&quot;rectangle&#x27;s area is &#123;:#?&#125;&quot;, rect.area());</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
+
+<p>（吐槽：这里把 <code>rectangle</code> 的首字母大写了，因为 Rust 的编译器居然会警告我的命名不规范，牛）</p>
+<p>可以看见，方法和函数定义差不多，也是用 <code>fn</code> 来定义，指定哪个函数里的话倒是比较意外，居然不是写在 <code>Rectangle </code>定义的花括号里，而是另开一个 <code>impl Rectangle</code> 再来定义方法。另外，Rust 方法和 Python 也有点相似之处，也是通过 <code>self</code> 来指代当前实例，<code>self</code> 可以用三种方式来定义</p>
+<ol>
+<li><code>&amp;self</code> ：不可变引用，这个是最常见的，我们只要读取数据，什么也不干，所以不需要用到所有权，也最方便</li>
+<li><code>self</code>：获取所有权，应该最不常见，有时方法需要用来转换<code>self</code>类型的话，需要用到所有权，获取所有权后再进行返回；如果不返回的话，所有权在调用完方法就被回收了，实例就销毁了。</li>
+<li><code>&amp;mul self</code>：可变引用，也没什么好说的，就是有时要改变实例内字段的值时会用。</li>
+</ol>
+<p>然后书上介绍了 Rust 为什么没有 <code>-&gt;</code> 运算符的问题，我没太看懂，就简述一下我的理解，具体感兴趣可以自行看书或查阅资料。</p>
+<p>C++在对于一个指针类型的结构体变量里，需要对变量进行一次解引用，也就是 <code>ractangle-&gt;area()= (*rectangle).area()</code> 所以额外定义了一个 <code>-&gt;</code> 运算符写起来方便些。而 Rust 里，self的类型被显式定义了，所以编译器可以自动的根据你定义的 <code>self</code> 类型，去自动推理出 <code>self</code> 是否需要自动引用还是解引用，所以就不需要 <code>-&gt;</code> 运算符了。</p>
+<h2 id="关联函数"><a href="#关联函数" class="headerlink" title="关联函数"></a>关联函数</h2><p>在 <code>impl</code> 块里，除了带 <code>self</code> 的方法之外，Rust 还允许在块里定义不含 <code>self</code> 的函数，这些函数因为和结构体有关联，又不太需要 <code>self</code> 所以称为关联函数。和 Python 的 <code>@staticmethod</code> 差不多吧</p>
+<p>这里用一个定义函数来举例</p>
+<div class="highlight-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="code"><pre><span class="line">#[derive(Debug)]</span><br><span class="line">struct Rectangle&#123;</span><br><span class="line">  w: u32,</span><br><span class="line">  h: u32</span><br><span class="line">&#125;</span><br><span class="line">impl Rectangle &#123;</span><br><span class="line">    fn area(self) -&gt; u32 &#123;</span><br><span class="line">       self.w * self.h</span><br><span class="line">    &#125;</span><br><span class="line">    fn square(size: u32) -&gt; Rectangle &#123;</span><br><span class="line">       Rectangle &#123; w: size, h: size &#125;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">fn main() &#123;</span><br><span class="line">  let rect = Rectangle&#123;w: 10, h: 20&#125;;</span><br><span class="line">  println!(&quot;rectangle&#x27;s area is &#123;:#?&#125;&quot;, rect.area());</span><br><span class="line">  println!(&quot;rectangle is &#123;:#?&#125;&quot;, Rectangle::square(3));</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
+
+<p>使用也就是指定命名空间调用就可以了。</p>
+<h2 id="多个impl块"><a href="#多个impl块" class="headerlink" title="多个impl块"></a>多个impl块</h2><p>使用多个 impl 块也是合法的，可以编译通过。书上说后面会有应用场景介绍，那就后面再看吧，目前感觉还派不上用场？</p>
+<div class="highlight-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="code"><pre><span class="line">#[derive(Debug)]</span><br><span class="line">struct Rectangle&#123;</span><br><span class="line">  w: u32,</span><br><span class="line">  h: u32</span><br><span class="line">&#125;</span><br><span class="line">impl Rectangle &#123;</span><br><span class="line">    fn area(self) -&gt; u32 &#123;</span><br><span class="line">       self.w * self.h</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br><span class="line">impl Rectangle &#123;</span><br><span class="line">    fn square(size: u32) -&gt; Rectangle &#123;</span><br><span class="line">       Rectangle&#123;w: size, h: size&#125;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br><span class="line">    </span><br><span class="line"></span><br><span class="line">fn main() &#123;</span><br><span class="line">  let rect = Rectangle&#123;w: 10, h: 20&#125;;</span><br><span class="line">  println!(&quot;rectangle&#x27;s area is &#123;:#?&#125;&quot;, rect.area());</span><br><span class="line">  println!(&quot;rectangle is &#123;:#?&#125;&quot;, Rectangle::square(3));</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
+
+<hr>
+<p>本章到此结束！没什么好总结的，是比较基础的，也很重要的一部分，下一章继续干。</p>
+]]></content>
+      <categories>
+        <category>编程/语言</category>
+      </categories>
+      <tags>
+        <tag>Rust</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>【Rust 学习记录】6. 枚举与模式匹配</title>
+    <url>/2023/03/30/%E3%80%90Rust-%E5%AD%A6%E4%B9%A0%E8%AE%B0%E5%BD%95%E3%80%916-%E6%9E%9A%E4%B8%BE%E4%B8%8E%E6%A8%A1%E5%BC%8F%E5%8C%B9%E9%85%8D/</url>
+    <content><![CDATA[<h1 id="定义枚举"><a href="#定义枚举" class="headerlink" title="定义枚举"></a>定义枚举</h1><p>例子：IP地址，只有 IPV4, IPV6 两个模式。</p>
+<p>所以我们可以通过枚举类型的方式来描述 IP 地址的类型。</p>
+<div class="highlight-container" data-rel="Rust"><figure class="iseeu highlight rust"><table><tr><td class="code"><pre><span class="line"><span class="keyword">enum</span> <span class="title class_">IpAddKind</span>&#123;</span><br><span class="line">  IPV4,</span><br><span class="line">  IPV6</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="keyword">fn</span> <span class="title function_">main</span>() &#123;</span><br><span class="line">  <span class="keyword">let</span> <span class="variable">four</span> = IpAddKind::IPV4;</span><br><span class="line">  <span class="keyword">let</span> <span class="variable">six</span> = IpAddKind::IPV6;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
+
+<p>这里也就两个点：</p>
+<ol>
+<li>使用 <code>enum</code> 关键字就可以完成一个枚举类型的定义。</li>
+<li>访问枚举类型的值是通过命名空间的方式来实现的，而不是点运算符。</li>
+</ol>
+<p>接下来再谈论一个实际的问题：这里的枚举类型只定义了两个类别，没有办法对应实际的IP地址，怎么办？</p>
+<p>一般情况下，我们首先想到的肯定是用结构体，一个字段存储类型，一个字段存储地址对吧。但是 Rust 有一个非常方便的特性：<strong>关联的数据可以直接嵌入到枚举类型里</strong>！</p>
+<div class="highlight-container" data-rel="Rust"><figure class="iseeu highlight rust"><table><tr><td class="code"><pre><span class="line"><span class="keyword">enum</span> <span class="title class_">IpAddKind</span>&#123;</span><br><span class="line">  <span class="title function_ invoke__">IPV4</span>(<span class="type">String</span>),</span><br><span class="line">  <span class="title function_ invoke__">IPV6</span>(<span class="type">String</span>)</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="keyword">fn</span> <span class="title function_">main</span>() &#123;</span><br><span class="line">  <span class="keyword">let</span> <span class="variable">local</span> = IpAddKind::<span class="title function_ invoke__">IPV4</span>(<span class="type">String</span>::<span class="title function_ invoke__">from</span>(<span class="string">&quot;127.0.0.1&quot;</span>));</span><br><span class="line">  <span class="keyword">let</span> <span class="variable">loopback</span> = IpAddKind::<span class="title function_ invoke__">IPV6</span>(<span class="type">String</span>::<span class="title function_ invoke__">from</span>(<span class="string">&quot;::1&quot;</span>));</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
+
+<p>厉害吧。不过好像结构体也能做是吧？不完全是，枚举类型有一个结构体做不到的功能。</p>
+<p>枚举类型可以为每个类型值指定一个类型，例如 IPV4 通常是四个数字来表示，而 IPV6 则不同，那么我们可以使用四个数字来描述 IPV4 ，使用字符串来描述 IPV6</p>
+<div class="highlight-container" data-rel="Rust"><figure class="iseeu highlight rust"><table><tr><td class="code"><pre><span class="line"><span class="keyword">enum</span> <span class="title class_">IpAddKind</span>&#123;</span><br><span class="line">  <span class="title function_ invoke__">IPV4</span>(<span class="type">u8</span>, <span class="type">u8</span>, <span class="type">u8</span>, <span class="type">u8</span>),</span><br><span class="line">  <span class="title function_ invoke__">IPV6</span>(<span class="type">String</span>)</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
+
+<p>这个时候，把类型和内容拆分成两个字段来描述的结构体，就没有办法实现了，只能固定一种类型。</p>
+<p>另外，IPV4和IPV6因为很常用，所以在标准库里其实就有定义好了一套枚举类型。它的定义方法是这样的。</p>
+<p><img  
+                     lazyload
+                     src="/images/loading.svg"
+                     data-src="/images/Snipaste_2023-03-30_21-21-30.jpg"
+                      alt="img"
+                ></p>
+<p>也就是先用两个结构体描述一下具体的 IPV4和IPV6 ，然后再定义一个枚举类型，把这两个结构体嵌入到枚举类型里。</p>
+<p>另外，枚举类型还有对于结构体另外的优势是，<strong>我们可以轻松的定义一个用于处理多个数据类型的函数</strong>。</p>
+<p>例如，我们可以像上面官方一样，用两个结构体去描述 IPV4和IPV6，但如果我们要定义一个函数，同时处理IP地址的话，就不知道该指定传入参数的类型是 IPV4还是IPV6了，但我们定义一个枚举类型 IpAddr ，就可以轻松的定义函数的传入类型为 IpAddr，然后可以同时处理两个结构体的数据。</p>
+<h1 id="Option——一个常用的枚举类型"><a href="#Option——一个常用的枚举类型" class="headerlink" title="Option——一个常用的枚举类型"></a>Option——一个常用的枚举类型</h1><p>Option 枚举类型定义了值可能不存在的情况，或者可以说是其他语言的空值 <code>Null</code> 。本来就很常用了，但这个类型在 Rust 里更有用，<strong>因为编译器可以自动检查我们是不是妥善的处理了所有应该被处理的情况</strong>。</p>
+<p>Rust 并没有像其他语言一样，有空值 <code>Null</code> 或者 <code>None</code> 的概念。书上说这是个错误的设计方法，因为当你定义了一个空值，在后续可能没有给他赋予其他值就进行使用的话，就会触发问题。这种设计理念可以帮助人们更方便的去实现一套系统，但也给系统埋下了更多的隐患。</p>
+<p>Rust 结合了一下这个理念，觉得空值是有意义的，触发空值问题的本质是实现的措施的问题，所以提供了一个具有类似概念的枚举类型——Option. 标准库里的定义是这样的</p>
+<div class="highlight-container" data-rel="Rust"><figure class="iseeu highlight rust"><table><tr><td class="code"><pre><span class="line"><span class="keyword">enum</span> <span class="title class_">Option</span>&lt;T&gt;&#123;</span><br><span class="line">  <span class="title function_ invoke__">Some</span>(T),</span><br><span class="line">  <span class="literal">None</span>,</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
+
+<p><code>Option</code> 是被预导入的，因为它很有用，所以我们不用 use 来导入它。所以我们可以不用指定命名空间，使用 <code>Some</code> 或者 <code>None</code> 关键词， 是后面学的语法，用来代表任意类型</p>
+<p>我们可以用这个方法来定义一些变量</p>
+<div class="highlight-container" data-rel="Rust"><figure class="iseeu highlight rust"><table><tr><td class="code"><pre><span class="line"><span class="keyword">fn</span> <span class="title function_">main</span>() &#123;</span><br><span class="line">  <span class="keyword">let</span> <span class="variable">some_number</span> = <span class="title function_ invoke__">Some</span>(<span class="number">5</span>);</span><br><span class="line">  <span class="keyword">let</span> <span class="variable">some_string</span> = <span class="title function_ invoke__">Some</span>(<span class="string">&quot;hello&quot;</span>);</span><br><span class="line">  <span class="keyword">let</span> <span class="variable">absent_number</span> = <span class="literal">None</span>;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
+
+<p>这段编译是不通过的，这也体现了 Option 相对于普通空值的优势。</p>
+<p>我们来简单的通过几个例子来了解一下 Option 的设计理念</p>
+<ol>
+<li>Option和 T 是两个不同的类型</li>
+</ol>
+<div class="highlight-container" data-rel="Rust"><figure class="iseeu highlight rust"><table><tr><td class="code"><pre><span class="line"><span class="keyword">fn</span> <span class="title function_">main</span>() &#123;</span><br><span class="line">  <span class="keyword">let</span> <span class="variable">a</span> = <span class="title function_ invoke__">Some</span>(<span class="number">5</span>);</span><br><span class="line">  <span class="keyword">let</span> <span class="variable">b</span> = <span class="number">5</span>;</span><br><span class="line">  <span class="built_in">println!</span>(<span class="string">&quot;&#123;&#125;&quot;</span>, a+b);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
+
+<p>可以看到这段代码里，虽然 a, b 同样都是 i32 但一个是被<code>Some</code>持有，那它们就是不同的类型，编译器无法理解不同类型相加，所以这就意味着什么。当我们对于一个可能有值，可能没值的变量，我们就要去使用 <code>Option</code> 枚举，一旦使用了<code>Option</code>枚举，我们再<strong>要实际使用它的时候，就要显式的把这个</strong> <code>Some</code> 类型的变量转换到 i32 的变量，再去使用。相当于强迫你去对这个变量编写一段代码，这样就避免了你不经过处理就使用，结果使用到空值的情况。</p>
+<p>当然，因为是枚举类型，我们也可以方便的用 <code>match</code> 来处理不同的情况，例如有值时怎么样，没值时怎么样等等。接下来就开始介绍一下 <code>match</code></p>
+<h1 id="match运算符"><a href="#match运算符" class="headerlink" title="match运算符"></a>match运算符</h1><p><code>match</code> 是一个很好用的运算符，它除了提高可读性外，也方便编译器对你的代码进行安全检查，确保你对所有可能的情况都进行了处理。</p>
+<div class="highlight-container" data-rel="Rust"><figure class="iseeu highlight rust"><table><tr><td class="code"><pre><span class="line"><span class="keyword">enum</span> <span class="title class_">Coin</span>&#123;</span><br><span class="line">    Penny,</span><br><span class="line">    Nickel,</span><br><span class="line">    Dime,</span><br><span class="line">    Quarter,</span><br><span class="line">&#125;</span><br><span class="line"><span class="keyword">fn</span> <span class="title function_">value_in_cents</span>(coin: Coin) <span class="punctuation">-&gt;</span> <span class="type">u8</span> &#123;</span><br><span class="line">    <span class="keyword">match</span> coin &#123;</span><br><span class="line">        Coin::Penny =&gt; <span class="number">1</span>,</span><br><span class="line">        Coin::Nickel =&gt; <span class="number">5</span>,</span><br><span class="line">        Coin::Dime =&gt; <span class="number">10</span>,</span><br><span class="line">        Coin::Quarter =&gt; <span class="number">25</span>,</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="keyword">fn</span> <span class="title function_">main</span>() &#123;</span><br><span class="line">  <span class="keyword">let</span> <span class="variable">my_coin</span> = Coin::Dime;</span><br><span class="line">  <span class="built_in">println!</span>(<span class="string">&quot;The value of my coin is &#123;&#125; cents&quot;</span>, <span class="title function_ invoke__">value_in_cents</span>(my_coin));</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
+
+<p>这就是一个简单的，输入硬币类型，返回硬币价值的代码。相对于 <code>if-else</code> 表达式，match 的第一个优势自然就是可读性。你 if-else 需要想方设法凑一个 bool 值，可能用字符串，可能用字典，可能用数字下标，可能用结构体什么的，但 match 枚举类型就不用，可以为任意你想要的类型定义一个名字，直接用，直接返回任意值，结构还更紧凑好看。</p>
+<p>另一个优势就是，match 运算符可以匹配枚举变量的部分值。</p>
+<p>美国的25美分硬币里，很多个州都有不同的设计，也只有25美分的硬币有这个特点，所以我们可以给25美分加一个值：州，对应不同的设计</p>
+<div class="highlight-container" data-rel="Rust"><figure class="iseeu highlight rust"><table><tr><td class="code"><pre><span class="line"><span class="meta">#[derive(Debug)]</span></span><br><span class="line"><span class="keyword">enum</span> <span class="title class_">UsState</span>&#123;</span><br><span class="line">    Alabama,</span><br><span class="line">    Alaska,</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="keyword">enum</span> <span class="title class_">Coin</span>&#123;</span><br><span class="line">    Penny,</span><br><span class="line">    Nickel,</span><br><span class="line">    Dime,</span><br><span class="line">    <span class="title function_ invoke__">Quarter</span>(UsState),</span><br><span class="line">&#125;</span><br><span class="line"><span class="keyword">fn</span> <span class="title function_">value_in_cents</span>(coin: Coin) <span class="punctuation">-&gt;</span> <span class="type">u8</span> &#123;</span><br><span class="line">    <span class="keyword">match</span> coin &#123;</span><br><span class="line">        Coin::Penny =&gt; <span class="number">1</span>,</span><br><span class="line">        Coin::Nickel =&gt; <span class="number">5</span>,</span><br><span class="line">        Coin::Dime =&gt; <span class="number">10</span>,</span><br><span class="line">        Coin::<span class="title function_ invoke__">Quarter</span>(state) =&gt; &#123;</span><br><span class="line">          <span class="built_in">println!</span>(<span class="string">&quot;The state of coin is &#123;:?&#125;&quot;</span>, state);</span><br><span class="line">          <span class="number">25</span></span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="keyword">fn</span> <span class="title function_">main</span>() &#123;</span><br><span class="line">  <span class="keyword">let</span> <span class="variable">my_coin</span> = Coin::<span class="title function_ invoke__">Quarter</span>(UsState::Alaska);</span><br><span class="line">  <span class="built_in">println!</span>(<span class="string">&quot;The value of my coin is &#123;&#125; cents&quot;</span>, <span class="title function_ invoke__">value_in_cents</span>(my_coin));</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
+
+<p>这里我们用到了之前的 Debug 注解，让编译器自动格式化枚举类型的输出，然后在match匹配里，提取了 <code>Quarter</code> 枚举类型里的值，命名为 <code>state</code>，然后输出。</p>
+<h2 id="匹配Option"><a href="#匹配Option" class="headerlink" title="匹配Option"></a>匹配Option</h2><p>接下来我们就可以综合一下上面学到的东西，用match来处理一下空和非空的情况了。</p>
+<div class="highlight-container" data-rel="Rust"><figure class="iseeu highlight rust"><table><tr><td class="code"><pre><span class="line"><span class="keyword">fn</span> <span class="title function_">pluse_one</span>(x: <span class="type">Option</span>&lt;<span class="type">i32</span>&gt;) <span class="punctuation">-&gt;</span> <span class="type">Option</span>&lt;<span class="type">i32</span>&gt; &#123;</span><br><span class="line">  <span class="keyword">match</span> x &#123;</span><br><span class="line">    <span class="literal">None</span> =&gt; <span class="literal">None</span>,</span><br><span class="line">    <span class="title function_ invoke__">Some</span>(i) =&gt; <span class="title function_ invoke__">Some</span>(i + <span class="number">1</span>),</span><br><span class="line">  &#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="keyword">fn</span> <span class="title function_">main</span>() &#123;</span><br><span class="line">  <span class="keyword">let</span> <span class="variable">num</span> = <span class="title function_ invoke__">Some</span>(<span class="number">5</span>);</span><br><span class="line">  <span class="keyword">let</span> <span class="variable">num2</span> = <span class="title function_ invoke__">pluse_one</span>(<span class="literal">None</span>);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
+
+<p>这就是一个典型的例子：</p>
+<ol>
+<li>当为空的时候，什么也不干</li>
+<li>当不为空的时候，取出值，进行处理</li>
+</ol>
+<p>这也就是 match 的相对于 if-else 的优势：可以以一个更简单，更紧凑，可读性更高的方式，进行模式匹配，进行对应值的处理。接下来就介绍 match 在安全性方面的优势：让编译器帮你检查是否处理完了所有情况。</p>
+<h2 id="必须穷举所有可能"><a href="#必须穷举所有可能" class="headerlink" title="必须穷举所有可能"></a>必须穷举所有可能</h2><p>我们来试着漏处理为空值的情况。</p>
+<div class="highlight-container" data-rel="Rust"><figure class="iseeu highlight rust"><table><tr><td class="code"><pre><span class="line"><span class="keyword">fn</span> <span class="title function_">pluse_one</span>(x: <span class="type">Option</span>&lt;<span class="type">i32</span>&gt;) <span class="punctuation">-&gt;</span> <span class="type">Option</span>&lt;<span class="type">i32</span>&gt; &#123;</span><br><span class="line">  <span class="keyword">match</span> x &#123;</span><br><span class="line">    <span class="title function_ invoke__">Some</span>(i) =&gt; <span class="title function_ invoke__">Some</span>(i + <span class="number">1</span>),</span><br><span class="line">  &#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="keyword">fn</span> <span class="title function_">main</span>() &#123;</span><br><span class="line">  <span class="keyword">let</span> <span class="variable">num</span> = <span class="title function_ invoke__">Some</span>(<span class="number">5</span>);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
+
+<p>编译器马上报错：<code>non-exhaustive patterns: None not covered</code> 你没有覆盖处理空值！</p>
+<p>这一段代码同时体现了 match 的优势和 Option 实现空值的优势。也就是你必须要处理所有情况，保证没有一点逻辑遗漏的地方，Option也依赖于 match 的这个特性，强迫你处理空值的情况，杜绝了大部分程序员只写一部分 if-else 结果就因为漏了部分情况没处理，导致程序 crash 的问题。</p>
+<h2 id="通配符"><a href="#通配符" class="headerlink" title="_ 通配符"></a>_ 通配符</h2><p>但有时候我明明不用处理所有情况，但每次都要写上很麻烦怎么办？没事，Rust 作为一个现代语言还是准备了一些语法糖，那就是通配符 <code>_</code> 相当于 if-else 里面的 else。</p>
+<div class="highlight-container" data-rel="Rust"><figure class="iseeu highlight rust"><table><tr><td class="code"><pre><span class="line"><span class="keyword">fn</span> <span class="title function_">pluse_one</span>(x: <span class="type">Option</span>&lt;<span class="type">i32</span>&gt;) <span class="punctuation">-&gt;</span> <span class="type">Option</span>&lt;<span class="type">i32</span>&gt; &#123;</span><br><span class="line">  <span class="keyword">match</span> x &#123;</span><br><span class="line">    <span class="title function_ invoke__">Some</span>(i) =&gt; <span class="title function_ invoke__">Some</span>(i + <span class="number">1</span>),</span><br><span class="line">    _ =&gt; <span class="literal">None</span></span><br><span class="line">  &#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="keyword">fn</span> <span class="title function_">main</span>() &#123;</span><br><span class="line">  <span class="keyword">let</span> <span class="variable">num</span> = <span class="title function_ invoke__">Some</span>(<span class="number">5</span>);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
+
+<p><code>_</code> 可以匹配所有类型，所以得放最后，用于处理前面没有被处理过的情况。</p>
+<p>但有时候我指向对一种情况处理怎么办？还是有点麻烦吧，Rust 还准备了 <code>if let</code> 语句</p>
+<h1 id="简单控制流-if-let"><a href="#简单控制流-if-let" class="headerlink" title="简单控制流 if-let"></a>简单控制流 if-let</h1><p>我们就继续用美分硬币来举例吧，之前写的代码方便些。例如我们只想知道这个硬币是不是 Penny。</p>
+<div class="highlight-container" data-rel="Rust"><figure class="iseeu highlight rust"><table><tr><td class="code"><pre><span class="line"><span class="keyword">enum</span> <span class="title class_">Coin</span>&#123;</span><br><span class="line">    Penny,</span><br><span class="line">    Nickel,</span><br><span class="line">    Dime,</span><br><span class="line">    Quarter,</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="keyword">fn</span> <span class="title function_">main</span>() &#123;</span><br><span class="line">  <span class="keyword">let</span> <span class="variable">my_coin</span> = Coin::Penny;</span><br><span class="line">  <span class="keyword">match</span> my_coin&#123;</span><br><span class="line">    Coin::Penny =&gt; <span class="built_in">println!</span>(<span class="string">&quot;Lucky Penny!&quot;</span>),</span><br><span class="line">    _ =&gt; <span class="built_in">println!</span>(<span class="string">&quot;Not a penny&quot;</span>),</span><br><span class="line">  &#125;;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
+
+<p>用 match 的话，就是要定义一个硬币，匹配这个硬币，再写个通配符来检测其他情况，标准流程是吧。但这样写或许繁琐了些，if let 就是这么一个一步到位的语法</p>
+<div class="highlight-container" data-rel="Rust"><figure class="iseeu highlight rust"><table><tr><td class="code"><pre><span class="line"><span class="keyword">enum</span> <span class="title class_">Coin</span>&#123;</span><br><span class="line">    Penny,</span><br><span class="line">    Nickel,</span><br><span class="line">    Dime,</span><br><span class="line">    Quarter,</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="keyword">fn</span> <span class="title function_">main</span>() &#123;</span><br><span class="line">  <span class="keyword">let</span> <span class="variable">my_coin</span> = Coin::Penny;</span><br><span class="line">  <span class="keyword">if</span> <span class="keyword">let</span> <span class="variable">Coin</span>::Penny = my_coin &#123;</span><br><span class="line">    <span class="built_in">println!</span>(<span class="string">&quot;Lucky penny!&quot;</span>);</span><br><span class="line">  &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
+
+<p><code>if let Coin::Penny</code> 就是要匹配的值，<code>my_coin</code>也就是你传入的值，用等号分隔开，如果两者相等的话，执行花括号内的语句。</p>
+<p>当然，也可以用<code>else</code></p>
+<div class="highlight-container" data-rel="Rust"><figure class="iseeu highlight rust"><table><tr><td class="code"><pre><span class="line"><span class="keyword">enum</span> <span class="title class_">Coin</span>&#123;</span><br><span class="line">    Penny,</span><br><span class="line">    Nickel,</span><br><span class="line">    Dime,</span><br><span class="line">    Quarter,</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="keyword">fn</span> <span class="title function_">main</span>() &#123;</span><br><span class="line">  <span class="keyword">let</span> <span class="variable">my_coin</span> = Coin::Penny;</span><br><span class="line">  <span class="keyword">if</span> <span class="keyword">let</span> <span class="variable">Coin</span>::Penny = my_coin &#123;</span><br><span class="line">    <span class="built_in">println!</span>(<span class="string">&quot;Lucky penny!&quot;</span>);</span><br><span class="line">  &#125;<span class="keyword">else</span>&#123;</span><br><span class="line">    <span class="built_in">println!</span>(<span class="string">&quot;Not a lucky penny!&quot;</span>);</span><br><span class="line">  &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
+
+<p>这样就和上面的 match 完全匹配了。</p>
+<p>虽然 if let 让代码写起来更简单了，但也失去了 match 的安全检查，所以是一个取舍吧。个人偏向于使用match，说实话我觉得这 if let 写起来有点别扭，感觉书写逻辑不太舒服。</p>
+<p>这应该只是一个偶尔可能用到的糖，哪时候你写烦了match，可以想想原来还有 If let 这么个东西</p>
+<hr>
+<p>第六章也就搞定了，大致总结一下，这章主要就是讲了一下1. 枚举类型对于结构体的优势所在，2. match对于if-else的优势所在，3. 独特的空值设计理念</p>
+<p>今天就到这里吧，后面还有7，8，9章三章的基础通用编程知识，学完就差不多进入进阶阶段了。</p>
+]]></content>
+      <categories>
+        <category>编程/语言</category>
+      </categories>
+      <tags>
+        <tag>Rust</tag>
+      </tags>
+  </entry>
+  <entry>
     <title>【Rust 学习记录】7. 包、单元包和模块</title>
     <url>/2023/04/01/%E3%80%90Rust-%E5%AD%A6%E4%B9%A0%E8%AE%B0%E5%BD%95%E3%80%917-%E5%8C%85%E3%80%81%E5%8D%95%E5%85%83%E5%8C%85%E5%92%8C%E6%A8%A1%E5%9D%97/</url>
     <content><![CDATA[<h1 id="包与单元包"><a href="#包与单元包" class="headerlink" title="包与单元包"></a>包与单元包</h1><ol>
@@ -1193,91 +1379,6 @@
       </tags>
   </entry>
   <entry>
-    <title>【Rust 学习记录】5. 结构体</title>
-    <url>/2023/03/30/%E3%80%90Rust-%E5%AD%A6%E4%B9%A0%E8%AE%B0%E5%BD%95%E3%80%915-%E7%BB%93%E6%9E%84%E4%BD%93/</url>
-    <content><![CDATA[<h1 id="定义及实例化方式"><a href="#定义及实例化方式" class="headerlink" title="定义及实例化方式"></a>定义及实例化方式</h1><h2 id="定义和创建实例"><a href="#定义和创建实例" class="headerlink" title="定义和创建实例"></a>定义和创建实例</h2><p>定义方法和 C++ 是一模一样了，详见代码</p>
-<div class="highlight-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="code"><pre><span class="line">struct User&#123;</span><br><span class="line">  username: String,</span><br><span class="line">  email: String,</span><br><span class="line">  sign_in_count: u64,</span><br><span class="line">  active: bool,</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
-
-<p>实例化方法稍显不同，方法和定义差不多，指名道姓的赋值，优势是不用对应顺序，可读性强。访问方法就还是传统的点运算符</p>
-<div class="highlight-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="code"><pre><span class="line">struct User&#123;</span><br><span class="line">  username: String,</span><br><span class="line">  email: String,</span><br><span class="line">  sign_in_count: u64,</span><br><span class="line">  active: bool,</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">fn main() &#123;</span><br><span class="line">    let user1 = User&#123;</span><br><span class="line">       email: String::from(&quot;test@1.com&quot;),</span><br><span class="line">       username: String::from(&quot;haha&quot;),</span><br><span class="line">       sign_in_count: 1,</span><br><span class="line">       active: true,</span><br><span class="line">    &#125;;</span><br><span class="line">    println!(&quot;user1: &#123;&#125;&quot;, user1.email);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
-
-<p>同理，结构体也有可变与不可变一说，<strong>可变结构体，结构体所有变量可变，不可变结构体，结构体所有变量不可变，Rust 没有让结构体部分变量可变，部分不可变的说法</strong></p>
-<h2 id="一些语法糖"><a href="#一些语法糖" class="headerlink" title="一些语法糖"></a>一些语法糖</h2><h3 id="同名参数对应赋值"><a href="#同名参数对应赋值" class="headerlink" title="同名参数对应赋值"></a>同名参数对应赋值</h3><p>如果每次都要写一个 email: xxxx， username: xxxx 好像有点麻烦是吗？Rust 提供了一个简单的方法，<strong>当变量名和结构体内的字段名完全一样的时候，会对应赋值</strong>（有一说一，这个设计挺有想法的，语法糖+1）</p>
-<p>所以我们可以很轻松的给 User 写一个创建用的函数，这样就可以实现带默认值，轻松的构建结构体实例了</p>
-<div class="highlight-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="code"><pre><span class="line">struct User&#123;</span><br><span class="line">  username: String,</span><br><span class="line">  email: String,</span><br><span class="line">  sign_in_count: u64,</span><br><span class="line">  active: bool,</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">fn create_user(email: String, username: String) -&gt; User &#123;</span><br><span class="line">  User &#123;</span><br><span class="line">    email,</span><br><span class="line">    username,</span><br><span class="line">    active: true,</span><br><span class="line">    sign_in_count: 1,</span><br><span class="line">  &#125;</span><br><span class="line">  // 不写分号返回 User 变量</span><br><span class="line">&#125;</span><br><span class="line">fn main() &#123;</span><br><span class="line">    let user1 = create_user(String::from(&quot;hah@haha.com&quot;), String::from(&quot;haha&quot;));</span><br><span class="line">    println!(&quot;user1: &#123;&#125;&quot;, user1.email);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
-
-<h3 id="用之前的实例构造现在的实例"><a href="#用之前的实例构造现在的实例" class="headerlink" title="用之前的实例构造现在的实例"></a>用之前的实例构造现在的实例</h3><p>在一些情况下其实结构体内的实例都不需要怎么变动，就像上面的例子里，<code>sign_in_count</code> 和 <code>active</code> 参数都是采用同一个默认值来赋给所有实例的，那有没有一些方法能简化这种情况的代码书写呢？有的。</p>
-<div class="highlight-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="code"><pre><span class="line">fn main() &#123;</span><br><span class="line">    let user1 = create_user(String::from(&quot;hah@haha.com&quot;), String::from(&quot;haha&quot;));</span><br><span class="line">    let user2 = User &#123;</span><br><span class="line">        email: String::from(&quot;user2@haha.com&quot;),</span><br><span class="line">        username: String::from(&quot;user2&quot;),</span><br><span class="line">        ..user1</span><br><span class="line">    &#125;;</span><br><span class="line">    println!(&quot;user2: &#123;&#125;&quot;, user2.active);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
-
-<p><code>..user1</code> 就代表了剩下的值都和 <code>user1</code> 一样，把 <code>user1</code> 里对应字段的值赋给 <code>user2</code> 即可。（这个感觉不如函数封装性好吧，但可能也看情况）</p>
-<h2 id="元组结构体——没有字段名的结构体"><a href="#元组结构体——没有字段名的结构体" class="headerlink" title="元组结构体——没有字段名的结构体"></a>元组结构体——没有字段名的结构体</h2><p>其实就相当于给元组命个名字，适用于很多不需要给字段命名的情况下，例如颜色的RGB，大家都懂是吧，就用一个三元组命名 <code>Color</code> 就好了。定义方式如下</p>
-<div class="highlight-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="code"><pre><span class="line">struct Color(i8, i8, i8);</span><br><span class="line"></span><br><span class="line">fn main() &#123;</span><br><span class="line">    let black = Color(0, 0, 0);</span><br><span class="line">    println!(&quot;user2: &#123;&#125;&quot;, black.0);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
-
-<p>值得一提的是，定义成结构体后也是用点运算符访问变量，而不是 [] 运算符了</p>
-<h2 id="空结构体——没有字段的结构体"><a href="#空结构体——没有字段的结构体" class="headerlink" title="空结构体——没有字段的结构体"></a>空结构体——没有字段的结构体</h2><p>当你想创建一个空结构体的时候，也是不会报错的，原理说是和空元组相似，然后在某些方面会有用，后续再介绍。</p>
-<p>我也不太懂，就不多说了，后面再看吧。</p>
-<h1 id="结构体的所有权"><a href="#结构体的所有权" class="headerlink" title="结构体的所有权"></a>结构体的所有权</h1><p>在上面举的这个例子中</p>
-<div class="highlight-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="code"><pre><span class="line">struct User&#123;</span><br><span class="line">  username: String,</span><br><span class="line">  email: String,</span><br><span class="line">  sign_in_count: u64,</span><br><span class="line">  active: bool,</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">fn main() &#123;</span><br><span class="line">    let user1 = User&#123;</span><br><span class="line">       email: String::from(&quot;test@1.com&quot;),</span><br><span class="line">       username: String::from(&quot;haha&quot;),</span><br><span class="line">       sign_in_count: 1,</span><br><span class="line">       active: true,</span><br><span class="line">    &#125;;</span><br><span class="line">    println!(&quot;user1: &#123;&#125;&quot;, user1.email);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
-
-<p>我们定义的所有字段都是具有值的所有权的，所以结构体实例能具有所有字段数据的所有权，能伴随着自己直到离开作用域，但也有不具有所有权的定义方式</p>
-<div class="highlight-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="code"><pre><span class="line">struct User&#123;</span><br><span class="line">  username: &amp;str,</span><br><span class="line">  email: &amp;str,</span><br><span class="line">  sign_in_count: u64,</span><br><span class="line">  active: bool,</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">fn main() &#123;</span><br><span class="line">    let user1 = User&#123;</span><br><span class="line">       email: String::from(&quot;test@1.com&quot;),</span><br><span class="line">       username: String::from(&quot;haha&quot;),</span><br><span class="line">       sign_in_count: 1,</span><br><span class="line">       active: true,</span><br><span class="line">    &#125;;</span><br><span class="line">    println!(&quot;user1: &#123;&#125;&quot;, user1.email);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
-
-<p>但这种方式现在是没办法定义通过的，报错提示需要指定生命周期，这个涉及到了生命周期，所以就放到后面介绍了。</p>
-<h1 id="初试trait——为结构体增加更多有用的功能"><a href="#初试trait——为结构体增加更多有用的功能" class="headerlink" title="初试trait——为结构体增加更多有用的功能"></a>初试trait——为结构体增加更多有用的功能</h1><p>说实话我不知道这个trait是什么意思，大概查了一下，是 特性（性状）的意思，用来定义一个类型可能和其他类型共享的功能，或许差不多相当于和 python 里的 <strong>xxx</strong> 差不多吗？但看样子还能自己定义的样子。先不管吧，大概了解一下概念，先学着。</p>
-<h2 id="打印结构体"><a href="#打印结构体" class="headerlink" title="打印结构体"></a>打印结构体</h2><p>用过 python 的应该都知道 python 类有个 <code>__str__</code> 函数，可以定义一个类的字符串格式，方便输出成人类能查看的格式，而不是一串地址，Rust 的结构体也有这个功能—— <code>Display</code>。</p>
-<p>我们可以先跑一下这段代码</p>
-<div class="highlight-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="code"><pre><span class="line">struct rectangle&#123;</span><br><span class="line">  w: u32,</span><br><span class="line">  h: u32</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">fn main() &#123;</span><br><span class="line">  let rect = rectangle&#123;w: 10, h: 20&#125;;</span><br><span class="line">  println!(&quot;rectangle is &#123;&#125;&quot;, rect);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
-
-<p>可以看到一个报错</p>
-<div class="highlight-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="code"><pre><span class="line">= help: the trait `std::fmt::Display` is not implemented for `rectangle`</span><br><span class="line">= note: in format strings you may be able to use `&#123;:?&#125;` (or &#123;:#?&#125; for pretty-print) instead</span><br></pre></td></tr></table></figure></div>
-
-<p><code>the trait std::fmt::Display is not implemented for rectangle </code>意思就是这个结构体还没实现 <code>Display</code> 这个方法，也就是说，<code>println!</code> 这个宏在输出的时候，还会调用一下类型的格式化函数，来进行指定的输出，之前我们用的基本类型都是默认实现了 <code>Display</code> 方法的，而这个 <code>rectangle</code> 是我们自己定义的，没有 <code>Display</code> 方法，<code>println!</code> 就不知道怎么格式化了，所以就报错。</p>
-<p>但除了这个还有一个有意思的提示 <code>in format strings you may be able to use &#123;:?&#125; (or &#123;:#?&#125; for pretty-print) instead</code> 。这句话告诉我们，可以用 <code>&#123;:?&#125;&#123;:#?&#125;</code> 来整一个漂亮的输出？啥意思？写一下吧~</p>
-<div class="highlight-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="code"><pre><span class="line">= help: the trait `Debug` is not implemented for `rectangle`</span><br><span class="line">= note: add `#[derive(Debug)]` to `rectangle` or manually `impl Debug for rectangle`</span><br></pre></td></tr></table></figure></div>
-
-<p>被骗了，还是报错。但我们发现了另一个有意思的 trait—— <code>Debug</code> 。也就是说，Rust 对格式化的方法区分了两种，Debug 是专门面向开发者调试时的输出用格式。我超，什么是现代化语法啊（后仰）。这种特性真能派上不少用途。</p>
-<p>提示里说，要么添加<code> [derive(Debug)]</code> 要么自己实现一个 <code>Debug</code> 我们可以先添加一下这个试试</p>
-<div class="highlight-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="code"><pre><span class="line">#[derive(Debug)]</span><br><span class="line">struct rectangle&#123;</span><br><span class="line">  w: u32,</span><br><span class="line">  h: u32</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">fn main() &#123;</span><br><span class="line">  let rect = rectangle&#123;w: 10, h: 20&#125;;</span><br><span class="line">  println!(&quot;rectangle is &#123;:?&#125;&quot;, rect);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
-
-<p>添加在函数头，进行一个 <code>Debug</code> 注解就可以了，这次运行就不会报错了。我们来看看输出是怎样的</p>
-<div class="highlight-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="code"><pre><span class="line">rectangle is rectangle &#123; w: 10, h: 20 &#125;</span><br></pre></td></tr></table></figure></div>
-
-<p>可见 Rust 标准的 <code>Debug</code> 格式化输出就是 结构体名{所有字段名: 对应的值}，嗯，挺不错的，不用自己手动一个一个输出了。我们再来看看之前提示里提到的另一个 <code>&#123;:#?&#125;</code> 吧</p>
-<div class="highlight-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="code"><pre><span class="line">rectangle is rectangle &#123;</span><br><span class="line">    w: 10,</span><br><span class="line">    h: 20,</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
-
-<p>这个输出会更好看点，有了一定的排版，对于复杂的结构体会更有可读性。</p>
-<p>好，书上的 trait 介绍就到这里结束了（是不是把一开始的 <code>Format</code> 忘了），它说到第 10 章的时候会更详细的介绍 trait 的时候，可以通过像这种对结构体进行 trait 注解的方式提供很多功能，包括自带的，甚至可以自己自定义，确实期待。</p>
-<h1 id="方法"><a href="#方法" class="headerlink" title="方法"></a>方法</h1><p>结构体，或者说类，当然不能少了函数，书上对普通函数和结构体里的函数区分了一下概念，结构体内的函数叫方法，因为方法的定义有局限性，例如参数要有self，只能定义在结构体或trait之类的地方，属于是一个子集吧。我们也严谨点，区分一下吧。</p>
-<h2 id="定义"><a href="#定义" class="headerlink" title="定义"></a>定义</h2><div class="highlight-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="code"><pre><span class="line">#[derive(Debug)]</span><br><span class="line">struct Rectangle&#123;</span><br><span class="line">  w: u32,</span><br><span class="line">  h: u32</span><br><span class="line">&#125;</span><br><span class="line">impl Rectangle &#123;</span><br><span class="line">    fn area(&amp;self) -&gt; u32 &#123;</span><br><span class="line">       self.w * self.h</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">fn main() &#123;</span><br><span class="line">  let rect = Rectangle&#123;w: 10, h: 20&#125;;</span><br><span class="line">  println!(&quot;rectangle&#x27;s area is &#123;:#?&#125;&quot;, rect.area());</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
-
-<p>（吐槽：这里把 <code>rectangle</code> 的首字母大写了，因为 Rust 的编译器居然会警告我的命名不规范，牛）</p>
-<p>可以看见，方法和函数定义差不多，也是用 <code>fn</code> 来定义，指定哪个函数里的话倒是比较意外，居然不是写在 <code>Rectangle </code>定义的花括号里，而是另开一个 <code>impl Rectangle</code> 再来定义方法。另外，Rust 方法和 Python 也有点相似之处，也是通过 <code>self</code> 来指代当前实例，<code>self</code> 可以用三种方式来定义</p>
-<ol>
-<li><code>&amp;self</code> ：不可变引用，这个是最常见的，我们只要读取数据，什么也不干，所以不需要用到所有权，也最方便</li>
-<li><code>self</code>：获取所有权，应该最不常见，有时方法需要用来转换<code>self</code>类型的话，需要用到所有权，获取所有权后再进行返回；如果不返回的话，所有权在调用完方法就被回收了，实例就销毁了。</li>
-<li><code>&amp;mul self</code>：可变引用，也没什么好说的，就是有时要改变实例内字段的值时会用。</li>
-</ol>
-<p>然后书上介绍了 Rust 为什么没有 <code>-&gt;</code> 运算符的问题，我没太看懂，就简述一下我的理解，具体感兴趣可以自行看书或查阅资料。</p>
-<p>C++在对于一个指针类型的结构体变量里，需要对变量进行一次解引用，也就是 <code>ractangle-&gt;area()= (*rectangle).area()</code> 所以额外定义了一个 <code>-&gt;</code> 运算符写起来方便些。而 Rust 里，self的类型被显式定义了，所以编译器可以自动的根据你定义的 <code>self</code> 类型，去自动推理出 <code>self</code> 是否需要自动引用还是解引用，所以就不需要 <code>-&gt;</code> 运算符了。</p>
-<h2 id="关联函数"><a href="#关联函数" class="headerlink" title="关联函数"></a>关联函数</h2><p>在 <code>impl</code> 块里，除了带 <code>self</code> 的方法之外，Rust 还允许在块里定义不含 <code>self</code> 的函数，这些函数因为和结构体有关联，又不太需要 <code>self</code> 所以称为关联函数。和 Python 的 <code>@staticmethod</code> 差不多吧</p>
-<p>这里用一个定义函数来举例</p>
-<div class="highlight-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="code"><pre><span class="line">#[derive(Debug)]</span><br><span class="line">struct Rectangle&#123;</span><br><span class="line">  w: u32,</span><br><span class="line">  h: u32</span><br><span class="line">&#125;</span><br><span class="line">impl Rectangle &#123;</span><br><span class="line">    fn area(self) -&gt; u32 &#123;</span><br><span class="line">       self.w * self.h</span><br><span class="line">    &#125;</span><br><span class="line">    fn square(size: u32) -&gt; Rectangle &#123;</span><br><span class="line">       Rectangle &#123; w: size, h: size &#125;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">fn main() &#123;</span><br><span class="line">  let rect = Rectangle&#123;w: 10, h: 20&#125;;</span><br><span class="line">  println!(&quot;rectangle&#x27;s area is &#123;:#?&#125;&quot;, rect.area());</span><br><span class="line">  println!(&quot;rectangle is &#123;:#?&#125;&quot;, Rectangle::square(3));</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
-
-<p>使用也就是指定命名空间调用就可以了。</p>
-<h2 id="多个impl块"><a href="#多个impl块" class="headerlink" title="多个impl块"></a>多个impl块</h2><p>使用多个 impl 块也是合法的，可以编译通过。书上说后面会有应用场景介绍，那就后面再看吧，目前感觉还派不上用场？</p>
-<div class="highlight-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="code"><pre><span class="line">#[derive(Debug)]</span><br><span class="line">struct Rectangle&#123;</span><br><span class="line">  w: u32,</span><br><span class="line">  h: u32</span><br><span class="line">&#125;</span><br><span class="line">impl Rectangle &#123;</span><br><span class="line">    fn area(self) -&gt; u32 &#123;</span><br><span class="line">       self.w * self.h</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br><span class="line">impl Rectangle &#123;</span><br><span class="line">    fn square(size: u32) -&gt; Rectangle &#123;</span><br><span class="line">       Rectangle&#123;w: size, h: size&#125;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br><span class="line">    </span><br><span class="line"></span><br><span class="line">fn main() &#123;</span><br><span class="line">  let rect = Rectangle&#123;w: 10, h: 20&#125;;</span><br><span class="line">  println!(&quot;rectangle&#x27;s area is &#123;:#?&#125;&quot;, rect.area());</span><br><span class="line">  println!(&quot;rectangle is &#123;:#?&#125;&quot;, Rectangle::square(3));</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
-
-<hr>
-<p>本章到此结束！没什么好总结的，是比较基础的，也很重要的一部分，下一章继续干。</p>
-]]></content>
-      <categories>
-        <category>编程/语言</category>
-      </categories>
-      <tags>
-        <tag>Rust</tag>
-      </tags>
-  </entry>
-  <entry>
     <title>【Rust 学习记录】9. 错误处理</title>
     <url>/2023/04/06/%E3%80%90Rust-%E5%AD%A6%E4%B9%A0%E8%AE%B0%E5%BD%95%E3%80%919-%E9%94%99%E8%AF%AF%E5%A4%84%E7%90%86/</url>
     <content><![CDATA[
@@ -1467,169 +1568,6 @@
       </tags>
   </entry>
   <entry>
-    <title>【Rust 学习记录】6. 枚举与模式匹配</title>
-    <url>/2023/03/30/%E3%80%90Rust-%E5%AD%A6%E4%B9%A0%E8%AE%B0%E5%BD%95%E3%80%916-%E6%9E%9A%E4%B8%BE%E4%B8%8E%E6%A8%A1%E5%BC%8F%E5%8C%B9%E9%85%8D/</url>
-    <content><![CDATA[<h1 id="定义枚举"><a href="#定义枚举" class="headerlink" title="定义枚举"></a>定义枚举</h1><p>例子：IP地址，只有 IPV4, IPV6 两个模式。</p>
-<p>所以我们可以通过枚举类型的方式来描述 IP 地址的类型。</p>
-<div class="highlight-container" data-rel="Rust"><figure class="iseeu highlight rust"><table><tr><td class="code"><pre><span class="line"><span class="keyword">enum</span> <span class="title class_">IpAddKind</span>&#123;</span><br><span class="line">  IPV4,</span><br><span class="line">  IPV6</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="keyword">fn</span> <span class="title function_">main</span>() &#123;</span><br><span class="line">  <span class="keyword">let</span> <span class="variable">four</span> = IpAddKind::IPV4;</span><br><span class="line">  <span class="keyword">let</span> <span class="variable">six</span> = IpAddKind::IPV6;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
-
-<p>这里也就两个点：</p>
-<ol>
-<li>使用 <code>enum</code> 关键字就可以完成一个枚举类型的定义。</li>
-<li>访问枚举类型的值是通过命名空间的方式来实现的，而不是点运算符。</li>
-</ol>
-<p>接下来再谈论一个实际的问题：这里的枚举类型只定义了两个类别，没有办法对应实际的IP地址，怎么办？</p>
-<p>一般情况下，我们首先想到的肯定是用结构体，一个字段存储类型，一个字段存储地址对吧。但是 Rust 有一个非常方便的特性：<strong>关联的数据可以直接嵌入到枚举类型里</strong>！</p>
-<div class="highlight-container" data-rel="Rust"><figure class="iseeu highlight rust"><table><tr><td class="code"><pre><span class="line"><span class="keyword">enum</span> <span class="title class_">IpAddKind</span>&#123;</span><br><span class="line">  <span class="title function_ invoke__">IPV4</span>(<span class="type">String</span>),</span><br><span class="line">  <span class="title function_ invoke__">IPV6</span>(<span class="type">String</span>)</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="keyword">fn</span> <span class="title function_">main</span>() &#123;</span><br><span class="line">  <span class="keyword">let</span> <span class="variable">local</span> = IpAddKind::<span class="title function_ invoke__">IPV4</span>(<span class="type">String</span>::<span class="title function_ invoke__">from</span>(<span class="string">&quot;127.0.0.1&quot;</span>));</span><br><span class="line">  <span class="keyword">let</span> <span class="variable">loopback</span> = IpAddKind::<span class="title function_ invoke__">IPV6</span>(<span class="type">String</span>::<span class="title function_ invoke__">from</span>(<span class="string">&quot;::1&quot;</span>));</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
-
-<p>厉害吧。不过好像结构体也能做是吧？不完全是，枚举类型有一个结构体做不到的功能。</p>
-<p>枚举类型可以为每个类型值指定一个类型，例如 IPV4 通常是四个数字来表示，而 IPV6 则不同，那么我们可以使用四个数字来描述 IPV4 ，使用字符串来描述 IPV6</p>
-<div class="highlight-container" data-rel="Rust"><figure class="iseeu highlight rust"><table><tr><td class="code"><pre><span class="line"><span class="keyword">enum</span> <span class="title class_">IpAddKind</span>&#123;</span><br><span class="line">  <span class="title function_ invoke__">IPV4</span>(<span class="type">u8</span>, <span class="type">u8</span>, <span class="type">u8</span>, <span class="type">u8</span>),</span><br><span class="line">  <span class="title function_ invoke__">IPV6</span>(<span class="type">String</span>)</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
-
-<p>这个时候，把类型和内容拆分成两个字段来描述的结构体，就没有办法实现了，只能固定一种类型。</p>
-<p>另外，IPV4和IPV6因为很常用，所以在标准库里其实就有定义好了一套枚举类型。它的定义方法是这样的。</p>
-<p><img  
-                     lazyload
-                     src="/images/loading.svg"
-                     data-src="/images/Snipaste_2023-03-30_21-21-30.jpg"
-                      alt="img"
-                ></p>
-<p>也就是先用两个结构体描述一下具体的 IPV4和IPV6 ，然后再定义一个枚举类型，把这两个结构体嵌入到枚举类型里。</p>
-<p>另外，枚举类型还有对于结构体另外的优势是，<strong>我们可以轻松的定义一个用于处理多个数据类型的函数</strong>。</p>
-<p>例如，我们可以像上面官方一样，用两个结构体去描述 IPV4和IPV6，但如果我们要定义一个函数，同时处理IP地址的话，就不知道该指定传入参数的类型是 IPV4还是IPV6了，但我们定义一个枚举类型 IpAddr ，就可以轻松的定义函数的传入类型为 IpAddr，然后可以同时处理两个结构体的数据。</p>
-<h1 id="Option——一个常用的枚举类型"><a href="#Option——一个常用的枚举类型" class="headerlink" title="Option——一个常用的枚举类型"></a>Option——一个常用的枚举类型</h1><p>Option 枚举类型定义了值可能不存在的情况，或者可以说是其他语言的空值 <code>Null</code> 。本来就很常用了，但这个类型在 Rust 里更有用，<strong>因为编译器可以自动检查我们是不是妥善的处理了所有应该被处理的情况</strong>。</p>
-<p>Rust 并没有像其他语言一样，有空值 <code>Null</code> 或者 <code>None</code> 的概念。书上说这是个错误的设计方法，因为当你定义了一个空值，在后续可能没有给他赋予其他值就进行使用的话，就会触发问题。这种设计理念可以帮助人们更方便的去实现一套系统，但也给系统埋下了更多的隐患。</p>
-<p>Rust 结合了一下这个理念，觉得空值是有意义的，触发空值问题的本质是实现的措施的问题，所以提供了一个具有类似概念的枚举类型——Option. 标准库里的定义是这样的</p>
-<div class="highlight-container" data-rel="Rust"><figure class="iseeu highlight rust"><table><tr><td class="code"><pre><span class="line"><span class="keyword">enum</span> <span class="title class_">Option</span>&lt;T&gt;&#123;</span><br><span class="line">  <span class="title function_ invoke__">Some</span>(T),</span><br><span class="line">  <span class="literal">None</span>,</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
-
-<p><code>Option</code> 是被预导入的，因为它很有用，所以我们不用 use 来导入它。所以我们可以不用指定命名空间，使用 <code>Some</code> 或者 <code>None</code> 关键词， 是后面学的语法，用来代表任意类型</p>
-<p>我们可以用这个方法来定义一些变量</p>
-<div class="highlight-container" data-rel="Rust"><figure class="iseeu highlight rust"><table><tr><td class="code"><pre><span class="line"><span class="keyword">fn</span> <span class="title function_">main</span>() &#123;</span><br><span class="line">  <span class="keyword">let</span> <span class="variable">some_number</span> = <span class="title function_ invoke__">Some</span>(<span class="number">5</span>);</span><br><span class="line">  <span class="keyword">let</span> <span class="variable">some_string</span> = <span class="title function_ invoke__">Some</span>(<span class="string">&quot;hello&quot;</span>);</span><br><span class="line">  <span class="keyword">let</span> <span class="variable">absent_number</span> = <span class="literal">None</span>;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
-
-<p>这段编译是不通过的，这也体现了 Option 相对于普通空值的优势。</p>
-<p>我们来简单的通过几个例子来了解一下 Option 的设计理念</p>
-<ol>
-<li>Option和 T 是两个不同的类型</li>
-</ol>
-<div class="highlight-container" data-rel="Rust"><figure class="iseeu highlight rust"><table><tr><td class="code"><pre><span class="line"><span class="keyword">fn</span> <span class="title function_">main</span>() &#123;</span><br><span class="line">  <span class="keyword">let</span> <span class="variable">a</span> = <span class="title function_ invoke__">Some</span>(<span class="number">5</span>);</span><br><span class="line">  <span class="keyword">let</span> <span class="variable">b</span> = <span class="number">5</span>;</span><br><span class="line">  <span class="built_in">println!</span>(<span class="string">&quot;&#123;&#125;&quot;</span>, a+b);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
-
-<p>可以看到这段代码里，虽然 a, b 同样都是 i32 但一个是被<code>Some</code>持有，那它们就是不同的类型，编译器无法理解不同类型相加，所以这就意味着什么。当我们对于一个可能有值，可能没值的变量，我们就要去使用 <code>Option</code> 枚举，一旦使用了<code>Option</code>枚举，我们再<strong>要实际使用它的时候，就要显式的把这个</strong> <code>Some</code> 类型的变量转换到 i32 的变量，再去使用。相当于强迫你去对这个变量编写一段代码，这样就避免了你不经过处理就使用，结果使用到空值的情况。</p>
-<p>当然，因为是枚举类型，我们也可以方便的用 <code>match</code> 来处理不同的情况，例如有值时怎么样，没值时怎么样等等。接下来就开始介绍一下 <code>match</code></p>
-<h1 id="match运算符"><a href="#match运算符" class="headerlink" title="match运算符"></a>match运算符</h1><p><code>match</code> 是一个很好用的运算符，它除了提高可读性外，也方便编译器对你的代码进行安全检查，确保你对所有可能的情况都进行了处理。</p>
-<div class="highlight-container" data-rel="Rust"><figure class="iseeu highlight rust"><table><tr><td class="code"><pre><span class="line"><span class="keyword">enum</span> <span class="title class_">Coin</span>&#123;</span><br><span class="line">    Penny,</span><br><span class="line">    Nickel,</span><br><span class="line">    Dime,</span><br><span class="line">    Quarter,</span><br><span class="line">&#125;</span><br><span class="line"><span class="keyword">fn</span> <span class="title function_">value_in_cents</span>(coin: Coin) <span class="punctuation">-&gt;</span> <span class="type">u8</span> &#123;</span><br><span class="line">    <span class="keyword">match</span> coin &#123;</span><br><span class="line">        Coin::Penny =&gt; <span class="number">1</span>,</span><br><span class="line">        Coin::Nickel =&gt; <span class="number">5</span>,</span><br><span class="line">        Coin::Dime =&gt; <span class="number">10</span>,</span><br><span class="line">        Coin::Quarter =&gt; <span class="number">25</span>,</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="keyword">fn</span> <span class="title function_">main</span>() &#123;</span><br><span class="line">  <span class="keyword">let</span> <span class="variable">my_coin</span> = Coin::Dime;</span><br><span class="line">  <span class="built_in">println!</span>(<span class="string">&quot;The value of my coin is &#123;&#125; cents&quot;</span>, <span class="title function_ invoke__">value_in_cents</span>(my_coin));</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
-
-<p>这就是一个简单的，输入硬币类型，返回硬币价值的代码。相对于 <code>if-else</code> 表达式，match 的第一个优势自然就是可读性。你 if-else 需要想方设法凑一个 bool 值，可能用字符串，可能用字典，可能用数字下标，可能用结构体什么的，但 match 枚举类型就不用，可以为任意你想要的类型定义一个名字，直接用，直接返回任意值，结构还更紧凑好看。</p>
-<p>另一个优势就是，match 运算符可以匹配枚举变量的部分值。</p>
-<p>美国的25美分硬币里，很多个州都有不同的设计，也只有25美分的硬币有这个特点，所以我们可以给25美分加一个值：州，对应不同的设计</p>
-<div class="highlight-container" data-rel="Rust"><figure class="iseeu highlight rust"><table><tr><td class="code"><pre><span class="line"><span class="meta">#[derive(Debug)]</span></span><br><span class="line"><span class="keyword">enum</span> <span class="title class_">UsState</span>&#123;</span><br><span class="line">    Alabama,</span><br><span class="line">    Alaska,</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="keyword">enum</span> <span class="title class_">Coin</span>&#123;</span><br><span class="line">    Penny,</span><br><span class="line">    Nickel,</span><br><span class="line">    Dime,</span><br><span class="line">    <span class="title function_ invoke__">Quarter</span>(UsState),</span><br><span class="line">&#125;</span><br><span class="line"><span class="keyword">fn</span> <span class="title function_">value_in_cents</span>(coin: Coin) <span class="punctuation">-&gt;</span> <span class="type">u8</span> &#123;</span><br><span class="line">    <span class="keyword">match</span> coin &#123;</span><br><span class="line">        Coin::Penny =&gt; <span class="number">1</span>,</span><br><span class="line">        Coin::Nickel =&gt; <span class="number">5</span>,</span><br><span class="line">        Coin::Dime =&gt; <span class="number">10</span>,</span><br><span class="line">        Coin::<span class="title function_ invoke__">Quarter</span>(state) =&gt; &#123;</span><br><span class="line">          <span class="built_in">println!</span>(<span class="string">&quot;The state of coin is &#123;:?&#125;&quot;</span>, state);</span><br><span class="line">          <span class="number">25</span></span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="keyword">fn</span> <span class="title function_">main</span>() &#123;</span><br><span class="line">  <span class="keyword">let</span> <span class="variable">my_coin</span> = Coin::<span class="title function_ invoke__">Quarter</span>(UsState::Alaska);</span><br><span class="line">  <span class="built_in">println!</span>(<span class="string">&quot;The value of my coin is &#123;&#125; cents&quot;</span>, <span class="title function_ invoke__">value_in_cents</span>(my_coin));</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
-
-<p>这里我们用到了之前的 Debug 注解，让编译器自动格式化枚举类型的输出，然后在match匹配里，提取了 <code>Quarter</code> 枚举类型里的值，命名为 <code>state</code>，然后输出。</p>
-<h2 id="匹配Option"><a href="#匹配Option" class="headerlink" title="匹配Option"></a>匹配Option</h2><p>接下来我们就可以综合一下上面学到的东西，用match来处理一下空和非空的情况了。</p>
-<div class="highlight-container" data-rel="Rust"><figure class="iseeu highlight rust"><table><tr><td class="code"><pre><span class="line"><span class="keyword">fn</span> <span class="title function_">pluse_one</span>(x: <span class="type">Option</span>&lt;<span class="type">i32</span>&gt;) <span class="punctuation">-&gt;</span> <span class="type">Option</span>&lt;<span class="type">i32</span>&gt; &#123;</span><br><span class="line">  <span class="keyword">match</span> x &#123;</span><br><span class="line">    <span class="literal">None</span> =&gt; <span class="literal">None</span>,</span><br><span class="line">    <span class="title function_ invoke__">Some</span>(i) =&gt; <span class="title function_ invoke__">Some</span>(i + <span class="number">1</span>),</span><br><span class="line">  &#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="keyword">fn</span> <span class="title function_">main</span>() &#123;</span><br><span class="line">  <span class="keyword">let</span> <span class="variable">num</span> = <span class="title function_ invoke__">Some</span>(<span class="number">5</span>);</span><br><span class="line">  <span class="keyword">let</span> <span class="variable">num2</span> = <span class="title function_ invoke__">pluse_one</span>(<span class="literal">None</span>);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
-
-<p>这就是一个典型的例子：</p>
-<ol>
-<li>当为空的时候，什么也不干</li>
-<li>当不为空的时候，取出值，进行处理</li>
-</ol>
-<p>这也就是 match 的相对于 if-else 的优势：可以以一个更简单，更紧凑，可读性更高的方式，进行模式匹配，进行对应值的处理。接下来就介绍 match 在安全性方面的优势：让编译器帮你检查是否处理完了所有情况。</p>
-<h2 id="必须穷举所有可能"><a href="#必须穷举所有可能" class="headerlink" title="必须穷举所有可能"></a>必须穷举所有可能</h2><p>我们来试着漏处理为空值的情况。</p>
-<div class="highlight-container" data-rel="Rust"><figure class="iseeu highlight rust"><table><tr><td class="code"><pre><span class="line"><span class="keyword">fn</span> <span class="title function_">pluse_one</span>(x: <span class="type">Option</span>&lt;<span class="type">i32</span>&gt;) <span class="punctuation">-&gt;</span> <span class="type">Option</span>&lt;<span class="type">i32</span>&gt; &#123;</span><br><span class="line">  <span class="keyword">match</span> x &#123;</span><br><span class="line">    <span class="title function_ invoke__">Some</span>(i) =&gt; <span class="title function_ invoke__">Some</span>(i + <span class="number">1</span>),</span><br><span class="line">  &#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="keyword">fn</span> <span class="title function_">main</span>() &#123;</span><br><span class="line">  <span class="keyword">let</span> <span class="variable">num</span> = <span class="title function_ invoke__">Some</span>(<span class="number">5</span>);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
-
-<p>编译器马上报错：<code>non-exhaustive patterns: None not covered</code> 你没有覆盖处理空值！</p>
-<p>这一段代码同时体现了 match 的优势和 Option 实现空值的优势。也就是你必须要处理所有情况，保证没有一点逻辑遗漏的地方，Option也依赖于 match 的这个特性，强迫你处理空值的情况，杜绝了大部分程序员只写一部分 if-else 结果就因为漏了部分情况没处理，导致程序 crash 的问题。</p>
-<h2 id="通配符"><a href="#通配符" class="headerlink" title="_ 通配符"></a>_ 通配符</h2><p>但有时候我明明不用处理所有情况，但每次都要写上很麻烦怎么办？没事，Rust 作为一个现代语言还是准备了一些语法糖，那就是通配符 <code>_</code> 相当于 if-else 里面的 else。</p>
-<div class="highlight-container" data-rel="Rust"><figure class="iseeu highlight rust"><table><tr><td class="code"><pre><span class="line"><span class="keyword">fn</span> <span class="title function_">pluse_one</span>(x: <span class="type">Option</span>&lt;<span class="type">i32</span>&gt;) <span class="punctuation">-&gt;</span> <span class="type">Option</span>&lt;<span class="type">i32</span>&gt; &#123;</span><br><span class="line">  <span class="keyword">match</span> x &#123;</span><br><span class="line">    <span class="title function_ invoke__">Some</span>(i) =&gt; <span class="title function_ invoke__">Some</span>(i + <span class="number">1</span>),</span><br><span class="line">    _ =&gt; <span class="literal">None</span></span><br><span class="line">  &#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="keyword">fn</span> <span class="title function_">main</span>() &#123;</span><br><span class="line">  <span class="keyword">let</span> <span class="variable">num</span> = <span class="title function_ invoke__">Some</span>(<span class="number">5</span>);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
-
-<p><code>_</code> 可以匹配所有类型，所以得放最后，用于处理前面没有被处理过的情况。</p>
-<p>但有时候我指向对一种情况处理怎么办？还是有点麻烦吧，Rust 还准备了 <code>if let</code> 语句</p>
-<h1 id="简单控制流-if-let"><a href="#简单控制流-if-let" class="headerlink" title="简单控制流 if-let"></a>简单控制流 if-let</h1><p>我们就继续用美分硬币来举例吧，之前写的代码方便些。例如我们只想知道这个硬币是不是 Penny。</p>
-<div class="highlight-container" data-rel="Rust"><figure class="iseeu highlight rust"><table><tr><td class="code"><pre><span class="line"><span class="keyword">enum</span> <span class="title class_">Coin</span>&#123;</span><br><span class="line">    Penny,</span><br><span class="line">    Nickel,</span><br><span class="line">    Dime,</span><br><span class="line">    Quarter,</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="keyword">fn</span> <span class="title function_">main</span>() &#123;</span><br><span class="line">  <span class="keyword">let</span> <span class="variable">my_coin</span> = Coin::Penny;</span><br><span class="line">  <span class="keyword">match</span> my_coin&#123;</span><br><span class="line">    Coin::Penny =&gt; <span class="built_in">println!</span>(<span class="string">&quot;Lucky Penny!&quot;</span>),</span><br><span class="line">    _ =&gt; <span class="built_in">println!</span>(<span class="string">&quot;Not a penny&quot;</span>),</span><br><span class="line">  &#125;;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
-
-<p>用 match 的话，就是要定义一个硬币，匹配这个硬币，再写个通配符来检测其他情况，标准流程是吧。但这样写或许繁琐了些，if let 就是这么一个一步到位的语法</p>
-<div class="highlight-container" data-rel="Rust"><figure class="iseeu highlight rust"><table><tr><td class="code"><pre><span class="line"><span class="keyword">enum</span> <span class="title class_">Coin</span>&#123;</span><br><span class="line">    Penny,</span><br><span class="line">    Nickel,</span><br><span class="line">    Dime,</span><br><span class="line">    Quarter,</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="keyword">fn</span> <span class="title function_">main</span>() &#123;</span><br><span class="line">  <span class="keyword">let</span> <span class="variable">my_coin</span> = Coin::Penny;</span><br><span class="line">  <span class="keyword">if</span> <span class="keyword">let</span> <span class="variable">Coin</span>::Penny = my_coin &#123;</span><br><span class="line">    <span class="built_in">println!</span>(<span class="string">&quot;Lucky penny!&quot;</span>);</span><br><span class="line">  &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
-
-<p><code>if let Coin::Penny</code> 就是要匹配的值，<code>my_coin</code>也就是你传入的值，用等号分隔开，如果两者相等的话，执行花括号内的语句。</p>
-<p>当然，也可以用<code>else</code></p>
-<div class="highlight-container" data-rel="Rust"><figure class="iseeu highlight rust"><table><tr><td class="code"><pre><span class="line"><span class="keyword">enum</span> <span class="title class_">Coin</span>&#123;</span><br><span class="line">    Penny,</span><br><span class="line">    Nickel,</span><br><span class="line">    Dime,</span><br><span class="line">    Quarter,</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="keyword">fn</span> <span class="title function_">main</span>() &#123;</span><br><span class="line">  <span class="keyword">let</span> <span class="variable">my_coin</span> = Coin::Penny;</span><br><span class="line">  <span class="keyword">if</span> <span class="keyword">let</span> <span class="variable">Coin</span>::Penny = my_coin &#123;</span><br><span class="line">    <span class="built_in">println!</span>(<span class="string">&quot;Lucky penny!&quot;</span>);</span><br><span class="line">  &#125;<span class="keyword">else</span>&#123;</span><br><span class="line">    <span class="built_in">println!</span>(<span class="string">&quot;Not a lucky penny!&quot;</span>);</span><br><span class="line">  &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
-
-<p>这样就和上面的 match 完全匹配了。</p>
-<p>虽然 if let 让代码写起来更简单了，但也失去了 match 的安全检查，所以是一个取舍吧。个人偏向于使用match，说实话我觉得这 if let 写起来有点别扭，感觉书写逻辑不太舒服。</p>
-<p>这应该只是一个偶尔可能用到的糖，哪时候你写烦了match，可以想想原来还有 If let 这么个东西</p>
-<hr>
-<p>第六章也就搞定了，大致总结一下，这章主要就是讲了一下1. 枚举类型对于结构体的优势所在，2. match对于if-else的优势所在，3. 独特的空值设计理念</p>
-<p>今天就到这里吧，后面还有7，8，9章三章的基础通用编程知识，学完就差不多进入进阶阶段了。</p>
-]]></content>
-      <categories>
-        <category>编程/语言</category>
-      </categories>
-      <tags>
-        <tag>Rust</tag>
-      </tags>
-  </entry>
-  <entry>
-    <title>【Rust学习记录】2. 猜数游戏——尝试代码编写</title>
-    <url>/2023/03/25/%E3%80%90Rust%E5%AD%A6%E4%B9%A0%E8%AE%B0%E5%BD%95%E3%80%912-%E7%8C%9C%E6%95%B0%E6%B8%B8%E6%88%8F%E2%80%94%E2%80%94%E5%B0%9D%E8%AF%95%E4%BB%A3%E7%A0%81%E7%BC%96%E5%86%99/</url>
-    <content><![CDATA[<h1 id="输入与输出的尝试"><a href="#输入与输出的尝试" class="headerlink" title="输入与输出的尝试"></a>输入与输出的尝试</h1><h2 id="创建项目"><a href="#创建项目" class="headerlink" title="创建项目"></a>创建项目</h2><div class="highlight-container" data-rel="Bash"><figure class="iseeu highlight bash"><table><tr><td class="code"><pre><span class="line">cargo new guess_game</span><br><span class="line"><span class="built_in">cd</span> .\guess_game\</span><br><span class="line">cargo run</span><br></pre></td></tr></table></figure></div>
-
-<p>就是之前介绍的，用 cargo 创建项目的步骤，run 成功了就表明没问题啦</p>
-<div class="highlight-container" data-rel="Rust"><figure class="iseeu highlight rust"><table><tr><td class="code"><pre><span class="line"><span class="keyword">use</span> std::io;</span><br><span class="line"></span><br><span class="line"><span class="keyword">fn</span> <span class="title function_">main</span>()&#123;</span><br><span class="line">    <span class="built_in">println!</span>(<span class="string">&quot;欢迎来玩猜数游戏！&quot;</span>);</span><br><span class="line">    <span class="built_in">println!</span>(<span class="string">&quot;输入一个数字：&quot;</span>);</span><br><span class="line">    <span class="keyword">let</span> <span class="keyword">mut </span><span class="variable">guess</span> = <span class="type">String</span>::<span class="title function_ invoke__">new</span>();</span><br><span class="line">    io::<span class="title function_ invoke__">stdin</span>().<span class="title function_ invoke__">read_line</span>(&amp;<span class="keyword">mut</span> guess).<span class="title function_ invoke__">expect</span>(<span class="string">&quot;读取输入失败！&quot;</span>);</span><br><span class="line">    <span class="built_in">println!</span>(<span class="string">&quot;你输入的数字是：&#123;&#125;&quot;</span>, guess);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
-
-<ul>
-<li><code>use</code>：就是 Rust 里的导入语句，这里的意思是导入 <code>std</code> 库里的 <code>io</code> 模块。</li>
-<li><code>let</code>：就是 Rust 里的定义语句，<code>let a = b;</code> 就是定义一个新的变量 <code>a</code>，值为 <code>b</code>。但值得一提的是，和其他所有程序都不一样，Rust 里直接定义的变量都是 <code>const</code> 常量，不可变！需要用 <code>mut</code> 关键词声明这个变量是可变的变量。</li>
-<li><code>string::new()</code>：没什么好说的，<code>new</code> 了一个 <code>String</code> 类型，是空白的字符串。</li>
-<li><code>io::stdin().read_line(&amp;mut guess)</code>：也就是调用 <code>io</code> 模块里的 <code>stdin</code> 实例的 <code>read_line</code> 函数，如果没有写 <code>use</code>，也可以用 <code>std::io::stdin</code> 表示，<code>&amp;</code> 和 C++ 里一样，是引用的概念，也就是说，定义了一个新的引用，和上面的 <code>guess</code> 指向同一个地址，用来接输入。</li>
-<li><code>.expect</code> 就是异常处理语句，在执行完 <code>read_line</code> 后，会返回一个 <code>Result</code> 类型的值，通常是一个枚举类型，<code>Ok</code> 和 <code>Err</code> 两个值，<code>Ok</code> 就是执行成功，并且附带代码产生的结果值，这里就是输入的字节数；<code>Err</code> 就是执行错误，附带错误原因。用 <code>expect</code> 就可以很方便地处理异常，而不用再写各 if-else。</li>
-<li>值得一提的是，不写 <code>expect</code> 的话，虽然能编译通过，但 Rust 会提示你有个地方没处理异常，就像这样：</li>
-</ul>
-<p><img  
-                     lazyload
-                     src="/images/loading.svg"
-                     data-src="/images/Snipaste_2023-03-24_23-15-36.jpg"
-                      alt="img"
-                ></p>
-<p>（听说有人不喜欢写异常处理是吧）</p>
-<p>最后一句，就是标准的格式化花括号占位输出，没什么好说的。</p>
-<h1 id="引入第三方包的尝试"><a href="#引入第三方包的尝试" class="headerlink" title="引入第三方包的尝试"></a>引入第三方包的尝试</h1><h2 id="声明依赖"><a href="#声明依赖" class="headerlink" title="声明依赖"></a>声明依赖</h2><p>一般语言的标准库都有生成随机数的函数，但rust没有。所以我们需要引入rust官方提供的一个随机数包——rand</p>
-<p>打开Cargo.toml文件，在dependencies后面添加rand包。</p>
-<div class="highlight-container" data-rel="Toml"><figure class="iseeu highlight toml"><table><tr><td class="code"><pre><span class="line"><span class="section">[package]</span></span><br><span class="line"><span class="attr">name</span> = <span class="string">&quot;guess_game&quot;</span></span><br><span class="line"><span class="attr">version</span> = <span class="string">&quot;0.1.0&quot;</span></span><br><span class="line"><span class="attr">edition</span> = <span class="string">&quot;2021&quot;</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html</span></span><br><span class="line"></span><br><span class="line"><span class="section">[dependencies]</span></span><br><span class="line"><span class="attr">rand</span> = <span class="string">&quot;0.3.14&quot;</span></span><br></pre></td></tr></table></figure></div>
-
-<p>0.3.14版本就是版本号。</p>
-<p>然后再build一次项目，cargo就会自动帮你搜索包以及对应的并下载了，包的信息一般是从 crates.io 获取</p>
-<h2 id="cargo-lock和cargo-update"><a href="#cargo-lock和cargo-update" class="headerlink" title="cargo.lock和cargo update"></a>cargo.lock和cargo update</h2><p>cargo引入了一个独特的机制来保证依赖的版本问题，让所有人在构建这个项目的时候都得到相同的结果。你第一次构建项目的时候，cargo就会遍历我们声明的依赖以及版本号，把它写到 lock 文件里，后面再构建的时候，就会都使用这个版本的依赖了，除非手动升级到其他版本。</p>
-<p>如果实在想升级，使用 <code>cargo update</code> 命令就会无视 lock 强行升级依赖</p>
-<h1 id="使用match进行分支控制的尝试"><a href="#使用match进行分支控制的尝试" class="headerlink" title="使用match进行分支控制的尝试"></a>使用match进行分支控制的尝试</h1><p>rust提供了match语法来进行更简洁的分支控制。</p>
-<div class="highlight-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="code"><pre><span class="line">use std::io;</span><br><span class="line">use std::cmp::Ordering;</span><br><span class="line">use rand::Rng;</span><br><span class="line">fn main()&#123;</span><br><span class="line">    println!(&quot;欢迎来玩猜数游戏！&quot;);</span><br><span class="line">    let secret_number = rand::thread_rng().gen_range(1, 101);</span><br><span class="line">    println!(&quot;正确答案是:&#123;&#125;&quot;, secret_number);</span><br><span class="line">    println!(&quot;输入一个数字：&quot;);</span><br><span class="line">    let mut guess = String::new();</span><br><span class="line">    io::stdin().read_line(&amp;mut guess)</span><br><span class="line">        .expect(&quot;读取输入失败！&quot;);</span><br><span class="line">    let guess: i32 = guess.trim().parse()</span><br><span class="line">        .expect(&quot;请输入正确的数字！&quot;);</span><br><span class="line">    match guess.cmp(&amp;secret_number)&#123;</span><br><span class="line">        Ordering::Less =&gt; &#123;</span><br><span class="line">            println!(&quot;猜小啦&quot;);</span><br><span class="line">            println!(&quot;再猜一次：&quot;);</span><br><span class="line">        &#125;,</span><br><span class="line">        Ordering::Greater =&gt; println!(&quot;猜大啦&quot;),</span><br><span class="line">        Ordering::Equal =&gt; println!(&quot;猜对啦&quot;),</span><br><span class="line">        Other =&gt; println!(&quot;猜错啦&quot;),</span><br><span class="line">    &#125;</span><br><span class="line">    println!(&quot;你输入的数字是：&#123;&#125;&quot;, guess);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
-
-<p>这段代码里：</p>
-<ul>
-<li><code>use</code> 了一个 <code>Ordering</code> 的模块，这个模块提供了顺序对应的枚举类型，也就是 <code>Less</code>, <code>Greater</code>, <code>Equal</code></li>
-<li><code>trim().parse()</code> 语句用来作类型转换，因为 <code>gen_range</code> 生成的 <code>secret_number</code> 是 <code>i32</code> 类型，无法直接与输入的字符串进行比较，所以作了一个类型转换；其中 <code>trim()</code> 就是去掉首尾多余的字符，空格换行什么的；<code>parse()</code> 是用于将字符串解析为对应数值类型的方法，同样也会抛出 <code>Result</code> 可以用于异常处理</li>
-<li><code>match guess.cmp</code>：就是通过 <code>match</code> 语法进行分支控制，把 <code>guess.cmp()</code> 的结果丢到下面去匹配，匹配到什么就执行什么的语句。其中 <code>cmp</code> 返回的就是 <code>Ordering</code> 这个枚举类型。实际中，这个枚举类型也可以自己定义，方便自己的分支控制。传统的 <code>if-else</code> 也能实现这个逻辑就是。</li>
-</ul>
-<p>PS：大概了解了一下 <code>if-else</code> 和 <code>match</code> 的比较，两者应该主要是在可读性上的区别比较明显。</p>
-<p>在可读性上，<code>if-else</code> 只接受 bool 值的二类判断。当有复杂条件的时候，就需要多层嵌套 <code>if-else</code> 比较难看。相对的，<code>match</code> 可以自定义枚举类型，在多类判断的时候，写法也更简洁，可读性更佳。当然，二类判断当属 <code>if-else</code>。</p>
-<p>在性能上，当匹配的模式非常多的情况下，<code>match</code> 可以在编译时就完成判断，而 <code>if-else</code> 是在运行的时候完成判断，在极端的情况下，<code>match</code> 的性能会更佳（但我觉得在这种语句上纠性能的意义并不大）。</p>
-<p>另外了解了一下，<code>if-else</code> 的语法和 C++ 基本一样，就不另外写了，书上目前也没有介绍 <code>if-else</code>。</p>
-<h1 id="循环的尝试"><a href="#循环的尝试" class="headerlink" title="循环的尝试"></a>循环的尝试</h1><div class="highlight-container" data-rel="Rust"><figure class="iseeu highlight rust"><table><tr><td class="code"><pre><span class="line"><span class="keyword">use</span> std::io;</span><br><span class="line"><span class="keyword">use</span> std::cmp::Ordering;</span><br><span class="line"><span class="keyword">use</span> rand::Rng;</span><br><span class="line"><span class="keyword">fn</span> <span class="title function_">main</span>()&#123;</span><br><span class="line">    <span class="built_in">println!</span>(<span class="string">&quot;欢迎来玩猜数游戏！&quot;</span>);</span><br><span class="line">    <span class="keyword">let</span> <span class="variable">secret_number</span> = rand::<span class="title function_ invoke__">thread_rng</span>().<span class="title function_ invoke__">gen_range</span>(<span class="number">1</span>, <span class="number">101</span>);</span><br><span class="line">    <span class="built_in">println!</span>(<span class="string">&quot;正确答案是:&#123;&#125;&quot;</span>, secret_number);</span><br><span class="line">    <span class="keyword">loop</span>&#123;</span><br><span class="line">        <span class="built_in">println!</span>(<span class="string">&quot;输入一个数字：&quot;</span>);</span><br><span class="line">        <span class="keyword">let</span> <span class="keyword">mut </span><span class="variable">guess</span> = <span class="type">String</span>::<span class="title function_ invoke__">new</span>();</span><br><span class="line">        io::<span class="title function_ invoke__">stdin</span>().<span class="title function_ invoke__">read_line</span>(&amp;<span class="keyword">mut</span> guess)</span><br><span class="line">        .<span class="title function_ invoke__">expect</span>(<span class="string">&quot;读取输入失败！&quot;</span>);</span><br><span class="line">        <span class="built_in">println!</span>(<span class="string">&quot;你输入的数字是：&#123;&#125;&quot;</span>, guess);</span><br><span class="line">        <span class="keyword">let</span> <span class="variable">guess</span>: <span class="type">i32</span> = guess.<span class="title function_ invoke__">trim</span>().<span class="title function_ invoke__">parse</span>()</span><br><span class="line">            .<span class="title function_ invoke__">expect</span>(<span class="string">&quot;请输入正确的数字！&quot;</span>);</span><br><span class="line">        <span class="keyword">match</span> guess.<span class="title function_ invoke__">cmp</span>(&amp;secret_number)&#123;</span><br><span class="line">            Ordering::Less =&gt; &#123;</span><br><span class="line">                <span class="built_in">println!</span>(<span class="string">&quot;猜小啦&quot;</span>);</span><br><span class="line">                <span class="built_in">println!</span>(<span class="string">&quot;再猜一次：&quot;</span>);</span><br><span class="line">            &#125;,</span><br><span class="line">            Ordering::Greater =&gt; &#123;</span><br><span class="line">                <span class="built_in">println!</span>(<span class="string">&quot;猜大啦&quot;</span>);</span><br><span class="line">                <span class="built_in">println!</span>(<span class="string">&quot;再猜一次：&quot;</span>);</span><br><span class="line">            &#125;,</span><br><span class="line">            Ordering::Equal =&gt; &#123;</span><br><span class="line">                <span class="built_in">println!</span>(<span class="string">&quot;猜对啦&quot;</span>);</span><br><span class="line">                <span class="keyword">break</span>;</span><br><span class="line">            &#125;</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
-
-<p>想使用一个 <code>while True</code> 循环也很简单，在 Rust 里就是一个 <code>loop</code> 语法，外带 <code>break</code>，没什么多说的，这里注意定义 <code>guess</code> 变量要在 <code>loop</code> 里，不然 <code>read_line</code> 会不断的在 <code>guess</code> 后面添加字符，就会导致无法转换成数字，报错退出。</p>
-<p>那么在循环里有一个问题就很明显了，那就是 <code>expect</code> 语句不是我所理解常规的 <code>try-catch</code> 异常处理语句，它并没有捕获+后处理的步骤，所以它是会导致程序报错退出的。</p>
-<p>那怎么来进行异常处理呢？之前也说过，<code>Result</code> 返回的是一个枚举类型 <code>Ok</code> 和 <code>Err</code>。那不就是，用 <code>match</code> 来处理就完了嘛？~</p>
-<div class="highlight-container" data-rel="Rust"><figure class="iseeu highlight rust"><table><tr><td class="code"><pre><span class="line"><span class="keyword">use</span> std::io;</span><br><span class="line"><span class="keyword">use</span> std::cmp::Ordering;</span><br><span class="line"><span class="keyword">use</span> rand::Rng;</span><br><span class="line"><span class="keyword">fn</span> <span class="title function_">main</span>()&#123;</span><br><span class="line">    <span class="built_in">println!</span>(<span class="string">&quot;欢迎来玩猜数游戏！&quot;</span>);</span><br><span class="line">    <span class="keyword">let</span> <span class="variable">secret_number</span> = rand::<span class="title function_ invoke__">thread_rng</span>().<span class="title function_ invoke__">gen_range</span>(<span class="number">1</span>, <span class="number">101</span>);</span><br><span class="line">    <span class="built_in">println!</span>(<span class="string">&quot;正确答案是:&#123;&#125;&quot;</span>, secret_number);</span><br><span class="line">    <span class="keyword">loop</span>&#123;</span><br><span class="line">        <span class="built_in">println!</span>(<span class="string">&quot;输入一个数字：&quot;</span>);</span><br><span class="line">        <span class="keyword">let</span> <span class="keyword">mut </span><span class="variable">guess</span> = <span class="type">String</span>::<span class="title function_ invoke__">new</span>();</span><br><span class="line">        io::<span class="title function_ invoke__">stdin</span>().<span class="title function_ invoke__">read_line</span>(&amp;<span class="keyword">mut</span> guess)</span><br><span class="line">        .<span class="title function_ invoke__">expect</span>(<span class="string">&quot;读取输入失败！&quot;</span>);</span><br><span class="line">        <span class="built_in">println!</span>(<span class="string">&quot;你输入的数字是：&#123;&#125;&quot;</span>, guess);</span><br><span class="line">        <span class="keyword">let</span> <span class="variable">guess</span>: <span class="type">i32</span> = <span class="keyword">match</span> guess.<span class="title function_ invoke__">trim</span>().<span class="title function_ invoke__">parse</span>()&#123;</span><br><span class="line">            <span class="title function_ invoke__">Ok</span>(num) =&gt; num,</span><br><span class="line">            <span class="title function_ invoke__">Err</span>(_) =&gt; &#123;</span><br><span class="line">                <span class="built_in">println!</span>(<span class="string">&quot;请输入一个正确的数字！&quot;</span>);</span><br><span class="line">                <span class="keyword">continue</span>;</span><br><span class="line">            &#125;</span><br><span class="line">        &#125;;</span><br><span class="line">        <span class="keyword">match</span> guess.<span class="title function_ invoke__">cmp</span>(&amp;secret_number)&#123;</span><br><span class="line">            Ordering::Less =&gt; &#123;</span><br><span class="line">                <span class="built_in">println!</span>(<span class="string">&quot;猜小啦&quot;</span>);</span><br><span class="line">                <span class="built_in">println!</span>(<span class="string">&quot;再猜一次：&quot;</span>);</span><br><span class="line">            &#125;,</span><br><span class="line">            Ordering::Greater =&gt; &#123;</span><br><span class="line">                <span class="built_in">println!</span>(<span class="string">&quot;猜大啦&quot;</span>);</span><br><span class="line">                <span class="built_in">println!</span>(<span class="string">&quot;再猜一次：&quot;</span>);</span><br><span class="line">            &#125;,</span><br><span class="line">            Ordering::Equal =&gt; &#123;</span><br><span class="line">                <span class="built_in">println!</span>(<span class="string">&quot;猜对啦&quot;</span>);</span><br><span class="line">                <span class="keyword">break</span>;</span><br><span class="line">            &#125;</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
-
-<p>修改后的代码是这样的，我们用 <code>match</code> 来处理 <code>parse()</code> 的返回值，之前也说过，<code>Ok</code> 会附带执行成功的值，所以 <code>Ok(num)</code> 表示，用 <code>num</code> 来匹配 <code>Ok</code> 里面带的成功的返回值，<code>=&gt;</code> 表示返回 <code>num</code> 值；<code>Err(_)</code> 就是表示，用 <code>_</code> 来匹配错误信息，因为不需要用，所以用 <code>_</code> 就完了，然后执行错误处理，输出+继续输入；值得一提的是这里好像说明了 Rust 的函数返回机制，好像不需要写 <code>return</code>，直接一个变量名就是返回了。</p>
-<p>OK，到目前为止，初步的编程尝试已经结束了，看了下后面的章节介绍，应该会是更结构化的东西。</p>
-]]></content>
-      <categories>
-        <category>编程/语言</category>
-      </categories>
-      <tags>
-        <tag>Rust</tag>
-      </tags>
-  </entry>
-  <entry>
     <title>【Rust学习记录】3. 通用编程概念</title>
     <url>/2023/03/25/%E3%80%90Rust%E5%AD%A6%E4%B9%A0%E8%AE%B0%E5%BD%95%E3%80%913-%E9%80%9A%E7%94%A8%E7%BC%96%E7%A8%8B%E6%A6%82%E5%BF%B5/</url>
     <content><![CDATA[<h1 id="变量，可变性，隐藏，常量"><a href="#变量，可变性，隐藏，常量" class="headerlink" title="变量，可变性，隐藏，常量"></a>变量，可变性，隐藏，常量</h1><p>这部分的内容基本都在前面了解过了，大致就是一下内容</p>
@@ -1713,98 +1651,65 @@
       </tags>
   </entry>
   <entry>
-    <title>使用Sphinx为你的项目快速构建文档</title>
-    <url>/2023/04/15/%E4%BD%BF%E7%94%A8Sphinx%E4%B8%BA%E4%BD%A0%E7%9A%84%E9%A1%B9%E7%9B%AE%E5%BF%AB%E9%80%9F%E6%9E%84%E5%BB%BA%E6%96%87%E6%A1%A3/</url>
-    <content><![CDATA[<p>最近写了个软件，需要写个接口文档，看到别人项目的文档有不少都是托管在 Read the Docs 上的，于是搜了一下，Read the Docs 是一个托管平台，而这个平台的文档是基于 Sphinx 构建的，所以就学了一下，以此记录。</p>
-<h1 id="安装Sphinx"><a href="#安装Sphinx" class="headerlink" title="安装Sphinx"></a>安装Sphinx</h1><p>很简单，用pip安装即可，尽量使用官方的源，国内源听说多少有点问题</p>
-<div class="highlight-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="code"><pre><span class="line">pip install sphinx</span><br></pre></td></tr></table></figure></div>
+    <title>【Rust学习记录】2. 猜数游戏——尝试代码编写</title>
+    <url>/2023/03/25/%E3%80%90Rust%E5%AD%A6%E4%B9%A0%E8%AE%B0%E5%BD%95%E3%80%912-%E7%8C%9C%E6%95%B0%E6%B8%B8%E6%88%8F%E2%80%94%E2%80%94%E5%B0%9D%E8%AF%95%E4%BB%A3%E7%A0%81%E7%BC%96%E5%86%99/</url>
+    <content><![CDATA[<h1 id="输入与输出的尝试"><a href="#输入与输出的尝试" class="headerlink" title="输入与输出的尝试"></a>输入与输出的尝试</h1><h2 id="创建项目"><a href="#创建项目" class="headerlink" title="创建项目"></a>创建项目</h2><div class="highlight-container" data-rel="Bash"><figure class="iseeu highlight bash"><table><tr><td class="code"><pre><span class="line">cargo new guess_game</span><br><span class="line"><span class="built_in">cd</span> .\guess_game\</span><br><span class="line">cargo run</span><br></pre></td></tr></table></figure></div>
 
-<h1 id="构建Sphinx项目"><a href="#构建Sphinx项目" class="headerlink" title="构建Sphinx项目"></a>构建Sphinx项目</h1><h2 id="快速构建"><a href="#快速构建" class="headerlink" title="快速构建"></a>快速构建</h2><p>推荐在项目的根目录构建一个文件夹<code>docs</code>来专门存放文档的源码，然后<code>cd docs</code>下构建源码</p>
-<p>构建也非常简单，一行命令即可</p>
-<div class="highlight-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="code"><pre><span class="line">sphinx-quickstart</span><br></pre></td></tr></table></figure></div>
+<p>就是之前介绍的，用 cargo 创建项目的步骤，run 成功了就表明没问题啦</p>
+<div class="highlight-container" data-rel="Rust"><figure class="iseeu highlight rust"><table><tr><td class="code"><pre><span class="line"><span class="keyword">use</span> std::io;</span><br><span class="line"></span><br><span class="line"><span class="keyword">fn</span> <span class="title function_">main</span>()&#123;</span><br><span class="line">    <span class="built_in">println!</span>(<span class="string">&quot;欢迎来玩猜数游戏！&quot;</span>);</span><br><span class="line">    <span class="built_in">println!</span>(<span class="string">&quot;输入一个数字：&quot;</span>);</span><br><span class="line">    <span class="keyword">let</span> <span class="keyword">mut </span><span class="variable">guess</span> = <span class="type">String</span>::<span class="title function_ invoke__">new</span>();</span><br><span class="line">    io::<span class="title function_ invoke__">stdin</span>().<span class="title function_ invoke__">read_line</span>(&amp;<span class="keyword">mut</span> guess).<span class="title function_ invoke__">expect</span>(<span class="string">&quot;读取输入失败！&quot;</span>);</span><br><span class="line">    <span class="built_in">println!</span>(<span class="string">&quot;你输入的数字是：&#123;&#125;&quot;</span>, guess);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
 
-<p>输入命令后，会提示是否要创建独立目录，选择<code>y</code>是即可，然后提示你填一些信息，包括项目名，作者名，语言等等，照实填写即可，语言是简体中文的话，填 <code>zh_CN</code> 即可</p>
-<p>构建完毕后，如果之前选择的是<code>y</code>的话，我们就可以在目录下看到<code>build</code>和<code>source</code>文件夹了，其中<code>source</code>文件夹就是存放项目源码的文件夹</p>
-<p><code>source</code>中包含了一个<code>conf.py</code>文件，用于填写项目配置，一个<code>index.rst</code>文件，是首页的源码。</p>
-<p>若无特殊需求的话，直接根据<code>rst</code>格式编写你的代码，然后<code>make html</code>即可完成项目的构建。</p>
-<p>但是为了写一个文档，又专门去学一个 rst 语法似乎有些不大合适，所以需要修改一下配置文件，让Sphinx支持大众都熟知的 markdown 语法。</p>
-<h2 id="配置文件"><a href="#配置文件" class="headerlink" title="配置文件"></a>配置文件</h2><h2 id="markdown配置"><a href="#markdown配置" class="headerlink" title="markdown配置"></a>markdown配置</h2><h3 id="安装扩展"><a href="#安装扩展" class="headerlink" title="安装扩展"></a>安装扩展</h3><p>首先，为了支持 markdown 语法，我们需要安装一个扩展插件<code>myst-parser</code></p>
-<div class="highlight-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="code"><pre><span class="line">pip install --upgrade myst-parser</span><br></pre></td></tr></table></figure></div>
-
-<h3 id="添加扩展配置"><a href="#添加扩展配置" class="headerlink" title="添加扩展配置"></a>添加扩展配置</h3><p>安装完成后，我们在<code>conf.py</code>文件内，修改一下<code>extensions</code>字段，引入扩展即可</p>
-<div class="highlight-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="code"><pre><span class="line">extensions = [&#x27;myst_parser&#x27;]</span><br></pre></td></tr></table></figure></div>
-
-<p>如果你的 markdown 文件可能非 md 结尾，则需要添加一下<code>source_suffix</code>字段</p>
-<div class="highlight-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="code"><pre><span class="line">source_suffix = &#123;</span><br><span class="line">    &#x27;.rst&#x27;: &#x27;restructuredtext&#x27;,</span><br><span class="line">    &#x27;.txt&#x27;: &#x27;markdown&#x27;,</span><br><span class="line">    &#x27;.md&#x27;: &#x27;markdown&#x27;,</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
-
-<p>意思就是，<code>.rst</code>文件，使用<code>restructuredtext</code>进行解析，<code>.txt</code>和<code>.md</code>文件则使用 markdown 进行解析（.rst不能删，首页还得用）</p>
-<p>此外，<code>myst-parser</code>默认关闭了很多一些非基本markdown的语法，我们可以通过添加<code>myst_enable_extensions</code>字段来支持这些语法，以下是一个完整的示例：</p>
-<div class="highlight-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="code"><pre><span class="line">myst_enable_extensions = [</span><br><span class="line">    &quot;amsmath&quot;,</span><br><span class="line">    &quot;attrs_inline&quot;,</span><br><span class="line">    &quot;colon_fence&quot;,</span><br><span class="line">    &quot;deflist&quot;,</span><br><span class="line">    &quot;dollarmath&quot;,</span><br><span class="line">    &quot;fieldlist&quot;,</span><br><span class="line">    &quot;html_admonition&quot;,</span><br><span class="line">    &quot;html_image&quot;,</span><br><span class="line">    &quot;linkify&quot;,</span><br><span class="line">    &quot;replacements&quot;,</span><br><span class="line">    &quot;smartquotes&quot;,</span><br><span class="line">    &quot;strikethrough&quot;,</span><br><span class="line">    &quot;substitution&quot;,</span><br><span class="line">    &quot;tasklist&quot;,</span><br><span class="line">]</span><br></pre></td></tr></table></figure></div>
-
-<p>按需开启即可，每个语法扩展具体功能如下：</p>
 <ul>
-<li>amsmath：LaTeX数学公式的软件包</li>
-<li>attrs_inline：属性扩展，这个我不太了解，应该和HTML的写法相关</li>
-<li>colon_fence：表格的语法</li>
-<li>deflist：列表的语法，也就是我现在在写的这个无序列表</li>
-<li>dollarmath：使用美元符号$$包围的数学公式语法</li>
-<li>fieldlist：块列表语法，一般用在说明函数及其参数的功能的时候</li>
-<li>html_admonition：基于html的提示框语法</li>
-<li>html_image：基于html的图片显示语法</li>
-<li>linkify：网址链接可点击的语法</li>
-<li>replacements：这个我不太懂，看起来是可以支持字符串替换</li>
-<li>smartquotes：会帮你自动把直引号转换成弯引号</li>
-<li>strikethrough：删除线语法，就是这样</li>
-<li>substitution：替换语法，差不多就是你可以定义一个变量，然后在后续的文本里添加占位符，构建时会帮你自动把变量的值填进占位符里</li>
-<li>tasklist：todo列表语法</li>
+<li><code>use</code>：就是 Rust 里的导入语句，这里的意思是导入 <code>std</code> 库里的 <code>io</code> 模块。</li>
+<li><code>let</code>：就是 Rust 里的定义语句，<code>let a = b;</code> 就是定义一个新的变量 <code>a</code>，值为 <code>b</code>。但值得一提的是，和其他所有程序都不一样，Rust 里直接定义的变量都是 <code>const</code> 常量，不可变！需要用 <code>mut</code> 关键词声明这个变量是可变的变量。</li>
+<li><code>string::new()</code>：没什么好说的，<code>new</code> 了一个 <code>String</code> 类型，是空白的字符串。</li>
+<li><code>io::stdin().read_line(&amp;mut guess)</code>：也就是调用 <code>io</code> 模块里的 <code>stdin</code> 实例的 <code>read_line</code> 函数，如果没有写 <code>use</code>，也可以用 <code>std::io::stdin</code> 表示，<code>&amp;</code> 和 C++ 里一样，是引用的概念，也就是说，定义了一个新的引用，和上面的 <code>guess</code> 指向同一个地址，用来接输入。</li>
+<li><code>.expect</code> 就是异常处理语句，在执行完 <code>read_line</code> 后，会返回一个 <code>Result</code> 类型的值，通常是一个枚举类型，<code>Ok</code> 和 <code>Err</code> 两个值，<code>Ok</code> 就是执行成功，并且附带代码产生的结果值，这里就是输入的字节数；<code>Err</code> 就是执行错误，附带错误原因。用 <code>expect</code> 就可以很方便地处理异常，而不用再写各 if-else。</li>
+<li>值得一提的是，不写 <code>expect</code> 的话，虽然能编译通过，但 Rust 会提示你有个地方没处理异常，就像这样：</li>
 </ul>
-<p>因篇幅有限，扩展仅作简单概述，甚至可能不准确，具体每个扩展的使用方法，以及效果示例，请查看<a class="link"   href="https://myst-parser.readthedocs.io/en/latest/syntax/optional.html" >官方文档 <i class="fa-regular fa-arrow-up-right-from-square fa-sm"></i></a></p>
-<blockquote>
-<p>linkify 需要额外安装一个插件，<code>pip install linkify-it-py</code></p>
-</blockquote>
-<h2 id="主题配置"><a href="#主题配置" class="headerlink" title="主题配置"></a>主题配置</h2><p>默认的主题很丑，所以我们选择使用 read the docs 的主题配置</p>
-<p>首先安装一下主题</p>
-<div class="highlight-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="code"><pre><span class="line">pip install sphinx_rtd_theme</span><br></pre></td></tr></table></figure></div>
-
-<p>然后在<code>conf.py</code>文件修改一下<code>html_theme</code>字段即可，改为</p>
-<div class="highlight-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="code"><pre><span class="line">html_theme = &#x27;sphinx_rtd_theme&#x27;</span><br></pre></td></tr></table></figure></div>
-
-<h2 id="编写你的文档"><a href="#编写你的文档" class="headerlink" title="编写你的文档"></a>编写你的文档</h2><p>因为我们配置了 markdown 语法，所以我们只需要使用常规的markdown编译器，正常的写每一页文档即可。</p>
-<p>这里我就写了两页，代码结构+如何添加算法，如下，写完放进source的目录即可</p>
 <p><img  
                      lazyload
                      src="/images/loading.svg"
-                     data-src="/images/blog1.jpg"
+                     data-src="/images/Snipaste_2023-03-24_23-15-36.jpg"
                       alt="img"
                 ></p>
-<blockquote>
-<p>注意，markdown语法需要把最高级的标题留给页面标题，例如用#一级标题写了页面的标题后，文章内容就只能用二级及以下的标题了，不然后面目录显示会有问题，会把文件所有最高级标题都作为目录标题</p>
-</blockquote>
-<h2 id="修改主页代码"><a href="#修改主页代码" class="headerlink" title="修改主页代码"></a>修改主页代码</h2><p>接下来我们去 <code>index.rst</code> 文件下，修改一下我们的主页内容以及左侧目录内容就差不多了</p>
-<div class="highlight-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="code"><pre><span class="line">.. AlgorithmViewer documentation master file, created by</span><br><span class="line">   sphinx-quickstart on Fri Apr 14 13:50:38 2023.</span><br><span class="line">   You can adapt this file completely to your liking, but it should at least</span><br><span class="line">   contain the root `toctree` directive.</span><br><span class="line"></span><br><span class="line">Welcome to AlgorithmViewer&#x27;s documentation!</span><br><span class="line">===========================================</span><br><span class="line"></span><br><span class="line">.. toctree::</span><br><span class="line">   :maxdepth: 2</span><br><span class="line">   :caption: Contents</span><br><span class="line">   </span><br><span class="line">   代码结构</span><br><span class="line">   如何添加算法</span><br></pre></td></tr></table></figure></div>
+<p>（听说有人不喜欢写异常处理是吧）</p>
+<p>最后一句，就是标准的格式化花括号占位输出，没什么好说的。</p>
+<h1 id="引入第三方包的尝试"><a href="#引入第三方包的尝试" class="headerlink" title="引入第三方包的尝试"></a>引入第三方包的尝试</h1><h2 id="声明依赖"><a href="#声明依赖" class="headerlink" title="声明依赖"></a>声明依赖</h2><p>一般语言的标准库都有生成随机数的函数，但rust没有。所以我们需要引入rust官方提供的一个随机数包——rand</p>
+<p>打开Cargo.toml文件，在dependencies后面添加rand包。</p>
+<div class="highlight-container" data-rel="Toml"><figure class="iseeu highlight toml"><table><tr><td class="code"><pre><span class="line"><span class="section">[package]</span></span><br><span class="line"><span class="attr">name</span> = <span class="string">&quot;guess_game&quot;</span></span><br><span class="line"><span class="attr">version</span> = <span class="string">&quot;0.1.0&quot;</span></span><br><span class="line"><span class="attr">edition</span> = <span class="string">&quot;2021&quot;</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html</span></span><br><span class="line"></span><br><span class="line"><span class="section">[dependencies]</span></span><br><span class="line"><span class="attr">rand</span> = <span class="string">&quot;0.3.14&quot;</span></span><br></pre></td></tr></table></figure></div>
 
-<p>rst 的语法我也不太懂，所以只简单针对这一个文件作简单的分析</p>
-<p>.. 开头的类似于注释，不会被编译到网页上</p>
-<p>&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;上的一行就是我们的欢迎页标题，rst的标题等号长度不得小于文字长度</p>
-<p>toctree:: 声明了一个树状结构，也就是我们的目录，maxdepth就是层级的最深深度，2也就是只显示两层</p>
-<p>caption 指定目录的标题，这里的目录标题是 Contents</p>
-<p>然后在后面接上你编写的文档文件即可，按我的写法，最终生成的页面会是这样的</p>
-<p><img  
-                     lazyload
-                     src="/images/loading.svg"
-                     data-src="/images/Snipaste_2023-04-15_01-09-42-1024x614.jpg"
-                      alt="img"
-                ></p>
-<h2 id="生成HTML文件"><a href="#生成HTML文件" class="headerlink" title="生成HTML文件"></a>生成HTML文件</h2><p>配置完成后，我们就可以在根目录<code>docs</code>下执行编译命令了，也是一行代码的事</p>
-<div class="highlight-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="code"><pre><span class="line">make html</span><br></pre></td></tr></table></figure></div>
+<p>0.3.14版本就是版本号。</p>
+<p>然后再build一次项目，cargo就会自动帮你搜索包以及对应的并下载了，包的信息一般是从 crates.io 获取</p>
+<h2 id="cargo-lock和cargo-update"><a href="#cargo-lock和cargo-update" class="headerlink" title="cargo.lock和cargo update"></a>cargo.lock和cargo update</h2><p>cargo引入了一个独特的机制来保证依赖的版本问题，让所有人在构建这个项目的时候都得到相同的结果。你第一次构建项目的时候，cargo就会遍历我们声明的依赖以及版本号，把它写到 lock 文件里，后面再构建的时候，就会都使用这个版本的依赖了，除非手动升级到其他版本。</p>
+<p>如果实在想升级，使用 <code>cargo update</code> 命令就会无视 lock 强行升级依赖</p>
+<h1 id="使用match进行分支控制的尝试"><a href="#使用match进行分支控制的尝试" class="headerlink" title="使用match进行分支控制的尝试"></a>使用match进行分支控制的尝试</h1><p>rust提供了match语法来进行更简洁的分支控制。</p>
+<div class="highlight-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="code"><pre><span class="line">use std::io;</span><br><span class="line">use std::cmp::Ordering;</span><br><span class="line">use rand::Rng;</span><br><span class="line">fn main()&#123;</span><br><span class="line">    println!(&quot;欢迎来玩猜数游戏！&quot;);</span><br><span class="line">    let secret_number = rand::thread_rng().gen_range(1, 101);</span><br><span class="line">    println!(&quot;正确答案是:&#123;&#125;&quot;, secret_number);</span><br><span class="line">    println!(&quot;输入一个数字：&quot;);</span><br><span class="line">    let mut guess = String::new();</span><br><span class="line">    io::stdin().read_line(&amp;mut guess)</span><br><span class="line">        .expect(&quot;读取输入失败！&quot;);</span><br><span class="line">    let guess: i32 = guess.trim().parse()</span><br><span class="line">        .expect(&quot;请输入正确的数字！&quot;);</span><br><span class="line">    match guess.cmp(&amp;secret_number)&#123;</span><br><span class="line">        Ordering::Less =&gt; &#123;</span><br><span class="line">            println!(&quot;猜小啦&quot;);</span><br><span class="line">            println!(&quot;再猜一次：&quot;);</span><br><span class="line">        &#125;,</span><br><span class="line">        Ordering::Greater =&gt; println!(&quot;猜大啦&quot;),</span><br><span class="line">        Ordering::Equal =&gt; println!(&quot;猜对啦&quot;),</span><br><span class="line">        Other =&gt; println!(&quot;猜错啦&quot;),</span><br><span class="line">    &#125;</span><br><span class="line">    println!(&quot;你输入的数字是：&#123;&#125;&quot;, guess);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
 
-<p>成功 build 后，我们就可以到 <code>build/html</code> 文件夹下，看到我们的HTML文件了，打开 index.html，就可以看到你的文档啦</p>
+<p>这段代码里：</p>
+<ul>
+<li><code>use</code> 了一个 <code>Ordering</code> 的模块，这个模块提供了顺序对应的枚举类型，也就是 <code>Less</code>, <code>Greater</code>, <code>Equal</code></li>
+<li><code>trim().parse()</code> 语句用来作类型转换，因为 <code>gen_range</code> 生成的 <code>secret_number</code> 是 <code>i32</code> 类型，无法直接与输入的字符串进行比较，所以作了一个类型转换；其中 <code>trim()</code> 就是去掉首尾多余的字符，空格换行什么的；<code>parse()</code> 是用于将字符串解析为对应数值类型的方法，同样也会抛出 <code>Result</code> 可以用于异常处理</li>
+<li><code>match guess.cmp</code>：就是通过 <code>match</code> 语法进行分支控制，把 <code>guess.cmp()</code> 的结果丢到下面去匹配，匹配到什么就执行什么的语句。其中 <code>cmp</code> 返回的就是 <code>Ordering</code> 这个枚举类型。实际中，这个枚举类型也可以自己定义，方便自己的分支控制。传统的 <code>if-else</code> 也能实现这个逻辑就是。</li>
+</ul>
+<p>PS：大概了解了一下 <code>if-else</code> 和 <code>match</code> 的比较，两者应该主要是在可读性上的区别比较明显。</p>
+<p>在可读性上，<code>if-else</code> 只接受 bool 值的二类判断。当有复杂条件的时候，就需要多层嵌套 <code>if-else</code> 比较难看。相对的，<code>match</code> 可以自定义枚举类型，在多类判断的时候，写法也更简洁，可读性更佳。当然，二类判断当属 <code>if-else</code>。</p>
+<p>在性能上，当匹配的模式非常多的情况下，<code>match</code> 可以在编译时就完成判断，而 <code>if-else</code> 是在运行的时候完成判断，在极端的情况下，<code>match</code> 的性能会更佳（但我觉得在这种语句上纠性能的意义并不大）。</p>
+<p>另外了解了一下，<code>if-else</code> 的语法和 C++ 基本一样，就不另外写了，书上目前也没有介绍 <code>if-else</code>。</p>
+<h1 id="循环的尝试"><a href="#循环的尝试" class="headerlink" title="循环的尝试"></a>循环的尝试</h1><div class="highlight-container" data-rel="Rust"><figure class="iseeu highlight rust"><table><tr><td class="code"><pre><span class="line"><span class="keyword">use</span> std::io;</span><br><span class="line"><span class="keyword">use</span> std::cmp::Ordering;</span><br><span class="line"><span class="keyword">use</span> rand::Rng;</span><br><span class="line"><span class="keyword">fn</span> <span class="title function_">main</span>()&#123;</span><br><span class="line">    <span class="built_in">println!</span>(<span class="string">&quot;欢迎来玩猜数游戏！&quot;</span>);</span><br><span class="line">    <span class="keyword">let</span> <span class="variable">secret_number</span> = rand::<span class="title function_ invoke__">thread_rng</span>().<span class="title function_ invoke__">gen_range</span>(<span class="number">1</span>, <span class="number">101</span>);</span><br><span class="line">    <span class="built_in">println!</span>(<span class="string">&quot;正确答案是:&#123;&#125;&quot;</span>, secret_number);</span><br><span class="line">    <span class="keyword">loop</span>&#123;</span><br><span class="line">        <span class="built_in">println!</span>(<span class="string">&quot;输入一个数字：&quot;</span>);</span><br><span class="line">        <span class="keyword">let</span> <span class="keyword">mut </span><span class="variable">guess</span> = <span class="type">String</span>::<span class="title function_ invoke__">new</span>();</span><br><span class="line">        io::<span class="title function_ invoke__">stdin</span>().<span class="title function_ invoke__">read_line</span>(&amp;<span class="keyword">mut</span> guess)</span><br><span class="line">        .<span class="title function_ invoke__">expect</span>(<span class="string">&quot;读取输入失败！&quot;</span>);</span><br><span class="line">        <span class="built_in">println!</span>(<span class="string">&quot;你输入的数字是：&#123;&#125;&quot;</span>, guess);</span><br><span class="line">        <span class="keyword">let</span> <span class="variable">guess</span>: <span class="type">i32</span> = guess.<span class="title function_ invoke__">trim</span>().<span class="title function_ invoke__">parse</span>()</span><br><span class="line">            .<span class="title function_ invoke__">expect</span>(<span class="string">&quot;请输入正确的数字！&quot;</span>);</span><br><span class="line">        <span class="keyword">match</span> guess.<span class="title function_ invoke__">cmp</span>(&amp;secret_number)&#123;</span><br><span class="line">            Ordering::Less =&gt; &#123;</span><br><span class="line">                <span class="built_in">println!</span>(<span class="string">&quot;猜小啦&quot;</span>);</span><br><span class="line">                <span class="built_in">println!</span>(<span class="string">&quot;再猜一次：&quot;</span>);</span><br><span class="line">            &#125;,</span><br><span class="line">            Ordering::Greater =&gt; &#123;</span><br><span class="line">                <span class="built_in">println!</span>(<span class="string">&quot;猜大啦&quot;</span>);</span><br><span class="line">                <span class="built_in">println!</span>(<span class="string">&quot;再猜一次：&quot;</span>);</span><br><span class="line">            &#125;,</span><br><span class="line">            Ordering::Equal =&gt; &#123;</span><br><span class="line">                <span class="built_in">println!</span>(<span class="string">&quot;猜对啦&quot;</span>);</span><br><span class="line">                <span class="keyword">break</span>;</span><br><span class="line">            &#125;</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
+
+<p>想使用一个 <code>while True</code> 循环也很简单，在 Rust 里就是一个 <code>loop</code> 语法，外带 <code>break</code>，没什么多说的，这里注意定义 <code>guess</code> 变量要在 <code>loop</code> 里，不然 <code>read_line</code> 会不断的在 <code>guess</code> 后面添加字符，就会导致无法转换成数字，报错退出。</p>
+<p>那么在循环里有一个问题就很明显了，那就是 <code>expect</code> 语句不是我所理解常规的 <code>try-catch</code> 异常处理语句，它并没有捕获+后处理的步骤，所以它是会导致程序报错退出的。</p>
+<p>那怎么来进行异常处理呢？之前也说过，<code>Result</code> 返回的是一个枚举类型 <code>Ok</code> 和 <code>Err</code>。那不就是，用 <code>match</code> 来处理就完了嘛？~</p>
+<div class="highlight-container" data-rel="Rust"><figure class="iseeu highlight rust"><table><tr><td class="code"><pre><span class="line"><span class="keyword">use</span> std::io;</span><br><span class="line"><span class="keyword">use</span> std::cmp::Ordering;</span><br><span class="line"><span class="keyword">use</span> rand::Rng;</span><br><span class="line"><span class="keyword">fn</span> <span class="title function_">main</span>()&#123;</span><br><span class="line">    <span class="built_in">println!</span>(<span class="string">&quot;欢迎来玩猜数游戏！&quot;</span>);</span><br><span class="line">    <span class="keyword">let</span> <span class="variable">secret_number</span> = rand::<span class="title function_ invoke__">thread_rng</span>().<span class="title function_ invoke__">gen_range</span>(<span class="number">1</span>, <span class="number">101</span>);</span><br><span class="line">    <span class="built_in">println!</span>(<span class="string">&quot;正确答案是:&#123;&#125;&quot;</span>, secret_number);</span><br><span class="line">    <span class="keyword">loop</span>&#123;</span><br><span class="line">        <span class="built_in">println!</span>(<span class="string">&quot;输入一个数字：&quot;</span>);</span><br><span class="line">        <span class="keyword">let</span> <span class="keyword">mut </span><span class="variable">guess</span> = <span class="type">String</span>::<span class="title function_ invoke__">new</span>();</span><br><span class="line">        io::<span class="title function_ invoke__">stdin</span>().<span class="title function_ invoke__">read_line</span>(&amp;<span class="keyword">mut</span> guess)</span><br><span class="line">        .<span class="title function_ invoke__">expect</span>(<span class="string">&quot;读取输入失败！&quot;</span>);</span><br><span class="line">        <span class="built_in">println!</span>(<span class="string">&quot;你输入的数字是：&#123;&#125;&quot;</span>, guess);</span><br><span class="line">        <span class="keyword">let</span> <span class="variable">guess</span>: <span class="type">i32</span> = <span class="keyword">match</span> guess.<span class="title function_ invoke__">trim</span>().<span class="title function_ invoke__">parse</span>()&#123;</span><br><span class="line">            <span class="title function_ invoke__">Ok</span>(num) =&gt; num,</span><br><span class="line">            <span class="title function_ invoke__">Err</span>(_) =&gt; &#123;</span><br><span class="line">                <span class="built_in">println!</span>(<span class="string">&quot;请输入一个正确的数字！&quot;</span>);</span><br><span class="line">                <span class="keyword">continue</span>;</span><br><span class="line">            &#125;</span><br><span class="line">        &#125;;</span><br><span class="line">        <span class="keyword">match</span> guess.<span class="title function_ invoke__">cmp</span>(&amp;secret_number)&#123;</span><br><span class="line">            Ordering::Less =&gt; &#123;</span><br><span class="line">                <span class="built_in">println!</span>(<span class="string">&quot;猜小啦&quot;</span>);</span><br><span class="line">                <span class="built_in">println!</span>(<span class="string">&quot;再猜一次：&quot;</span>);</span><br><span class="line">            &#125;,</span><br><span class="line">            Ordering::Greater =&gt; &#123;</span><br><span class="line">                <span class="built_in">println!</span>(<span class="string">&quot;猜大啦&quot;</span>);</span><br><span class="line">                <span class="built_in">println!</span>(<span class="string">&quot;再猜一次：&quot;</span>);</span><br><span class="line">            &#125;,</span><br><span class="line">            Ordering::Equal =&gt; &#123;</span><br><span class="line">                <span class="built_in">println!</span>(<span class="string">&quot;猜对啦&quot;</span>);</span><br><span class="line">                <span class="keyword">break</span>;</span><br><span class="line">            &#125;</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
+
+<p>修改后的代码是这样的，我们用 <code>match</code> 来处理 <code>parse()</code> 的返回值，之前也说过，<code>Ok</code> 会附带执行成功的值，所以 <code>Ok(num)</code> 表示，用 <code>num</code> 来匹配 <code>Ok</code> 里面带的成功的返回值，<code>=&gt;</code> 表示返回 <code>num</code> 值；<code>Err(_)</code> 就是表示，用 <code>_</code> 来匹配错误信息，因为不需要用，所以用 <code>_</code> 就完了，然后执行错误处理，输出+继续输入；值得一提的是这里好像说明了 Rust 的函数返回机制，好像不需要写 <code>return</code>，直接一个变量名就是返回了。</p>
+<p>OK，到目前为止，初步的编程尝试已经结束了，看了下后面的章节介绍，应该会是更结构化的东西。</p>
 ]]></content>
       <categories>
-        <category>好软推荐</category>
+        <category>编程/语言</category>
       </categories>
       <tags>
-        <tag>好软推荐</tag>
+        <tag>Rust</tag>
       </tags>
   </entry>
   <entry>
@@ -2024,6 +1929,101 @@
       </categories>
       <tags>
         <tag>前端</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>使用Sphinx为你的项目快速构建文档</title>
+    <url>/2023/04/15/%E4%BD%BF%E7%94%A8Sphinx%E4%B8%BA%E4%BD%A0%E7%9A%84%E9%A1%B9%E7%9B%AE%E5%BF%AB%E9%80%9F%E6%9E%84%E5%BB%BA%E6%96%87%E6%A1%A3/</url>
+    <content><![CDATA[<p>最近写了个软件，需要写个接口文档，看到别人项目的文档有不少都是托管在 Read the Docs 上的，于是搜了一下，Read the Docs 是一个托管平台，而这个平台的文档是基于 Sphinx 构建的，所以就学了一下，以此记录。</p>
+<h1 id="安装Sphinx"><a href="#安装Sphinx" class="headerlink" title="安装Sphinx"></a>安装Sphinx</h1><p>很简单，用pip安装即可，尽量使用官方的源，国内源听说多少有点问题</p>
+<div class="highlight-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="code"><pre><span class="line">pip install sphinx</span><br></pre></td></tr></table></figure></div>
+
+<h1 id="构建Sphinx项目"><a href="#构建Sphinx项目" class="headerlink" title="构建Sphinx项目"></a>构建Sphinx项目</h1><h2 id="快速构建"><a href="#快速构建" class="headerlink" title="快速构建"></a>快速构建</h2><p>推荐在项目的根目录构建一个文件夹<code>docs</code>来专门存放文档的源码，然后<code>cd docs</code>下构建源码</p>
+<p>构建也非常简单，一行命令即可</p>
+<div class="highlight-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="code"><pre><span class="line">sphinx-quickstart</span><br></pre></td></tr></table></figure></div>
+
+<p>输入命令后，会提示是否要创建独立目录，选择<code>y</code>是即可，然后提示你填一些信息，包括项目名，作者名，语言等等，照实填写即可，语言是简体中文的话，填 <code>zh_CN</code> 即可</p>
+<p>构建完毕后，如果之前选择的是<code>y</code>的话，我们就可以在目录下看到<code>build</code>和<code>source</code>文件夹了，其中<code>source</code>文件夹就是存放项目源码的文件夹</p>
+<p><code>source</code>中包含了一个<code>conf.py</code>文件，用于填写项目配置，一个<code>index.rst</code>文件，是首页的源码。</p>
+<p>若无特殊需求的话，直接根据<code>rst</code>格式编写你的代码，然后<code>make html</code>即可完成项目的构建。</p>
+<p>但是为了写一个文档，又专门去学一个 rst 语法似乎有些不大合适，所以需要修改一下配置文件，让Sphinx支持大众都熟知的 markdown 语法。</p>
+<h2 id="配置文件"><a href="#配置文件" class="headerlink" title="配置文件"></a>配置文件</h2><h2 id="markdown配置"><a href="#markdown配置" class="headerlink" title="markdown配置"></a>markdown配置</h2><h3 id="安装扩展"><a href="#安装扩展" class="headerlink" title="安装扩展"></a>安装扩展</h3><p>首先，为了支持 markdown 语法，我们需要安装一个扩展插件<code>myst-parser</code></p>
+<div class="highlight-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="code"><pre><span class="line">pip install --upgrade myst-parser</span><br></pre></td></tr></table></figure></div>
+
+<h3 id="添加扩展配置"><a href="#添加扩展配置" class="headerlink" title="添加扩展配置"></a>添加扩展配置</h3><p>安装完成后，我们在<code>conf.py</code>文件内，修改一下<code>extensions</code>字段，引入扩展即可</p>
+<div class="highlight-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="code"><pre><span class="line">extensions = [&#x27;myst_parser&#x27;]</span><br></pre></td></tr></table></figure></div>
+
+<p>如果你的 markdown 文件可能非 md 结尾，则需要添加一下<code>source_suffix</code>字段</p>
+<div class="highlight-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="code"><pre><span class="line">source_suffix = &#123;</span><br><span class="line">    &#x27;.rst&#x27;: &#x27;restructuredtext&#x27;,</span><br><span class="line">    &#x27;.txt&#x27;: &#x27;markdown&#x27;,</span><br><span class="line">    &#x27;.md&#x27;: &#x27;markdown&#x27;,</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
+
+<p>意思就是，<code>.rst</code>文件，使用<code>restructuredtext</code>进行解析，<code>.txt</code>和<code>.md</code>文件则使用 markdown 进行解析（.rst不能删，首页还得用）</p>
+<p>此外，<code>myst-parser</code>默认关闭了很多一些非基本markdown的语法，我们可以通过添加<code>myst_enable_extensions</code>字段来支持这些语法，以下是一个完整的示例：</p>
+<div class="highlight-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="code"><pre><span class="line">myst_enable_extensions = [</span><br><span class="line">    &quot;amsmath&quot;,</span><br><span class="line">    &quot;attrs_inline&quot;,</span><br><span class="line">    &quot;colon_fence&quot;,</span><br><span class="line">    &quot;deflist&quot;,</span><br><span class="line">    &quot;dollarmath&quot;,</span><br><span class="line">    &quot;fieldlist&quot;,</span><br><span class="line">    &quot;html_admonition&quot;,</span><br><span class="line">    &quot;html_image&quot;,</span><br><span class="line">    &quot;linkify&quot;,</span><br><span class="line">    &quot;replacements&quot;,</span><br><span class="line">    &quot;smartquotes&quot;,</span><br><span class="line">    &quot;strikethrough&quot;,</span><br><span class="line">    &quot;substitution&quot;,</span><br><span class="line">    &quot;tasklist&quot;,</span><br><span class="line">]</span><br></pre></td></tr></table></figure></div>
+
+<p>按需开启即可，每个语法扩展具体功能如下：</p>
+<ul>
+<li>amsmath：LaTeX数学公式的软件包</li>
+<li>attrs_inline：属性扩展，这个我不太了解，应该和HTML的写法相关</li>
+<li>colon_fence：表格的语法</li>
+<li>deflist：列表的语法，也就是我现在在写的这个无序列表</li>
+<li>dollarmath：使用美元符号$$包围的数学公式语法</li>
+<li>fieldlist：块列表语法，一般用在说明函数及其参数的功能的时候</li>
+<li>html_admonition：基于html的提示框语法</li>
+<li>html_image：基于html的图片显示语法</li>
+<li>linkify：网址链接可点击的语法</li>
+<li>replacements：这个我不太懂，看起来是可以支持字符串替换</li>
+<li>smartquotes：会帮你自动把直引号转换成弯引号</li>
+<li>strikethrough：删除线语法，就是这样</li>
+<li>substitution：替换语法，差不多就是你可以定义一个变量，然后在后续的文本里添加占位符，构建时会帮你自动把变量的值填进占位符里</li>
+<li>tasklist：todo列表语法</li>
+</ul>
+<p>因篇幅有限，扩展仅作简单概述，甚至可能不准确，具体每个扩展的使用方法，以及效果示例，请查看<a class="link"   href="https://myst-parser.readthedocs.io/en/latest/syntax/optional.html" >官方文档 <i class="fa-regular fa-arrow-up-right-from-square fa-sm"></i></a></p>
+<blockquote>
+<p>linkify 需要额外安装一个插件，<code>pip install linkify-it-py</code></p>
+</blockquote>
+<h2 id="主题配置"><a href="#主题配置" class="headerlink" title="主题配置"></a>主题配置</h2><p>默认的主题很丑，所以我们选择使用 read the docs 的主题配置</p>
+<p>首先安装一下主题</p>
+<div class="highlight-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="code"><pre><span class="line">pip install sphinx_rtd_theme</span><br></pre></td></tr></table></figure></div>
+
+<p>然后在<code>conf.py</code>文件修改一下<code>html_theme</code>字段即可，改为</p>
+<div class="highlight-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="code"><pre><span class="line">html_theme = &#x27;sphinx_rtd_theme&#x27;</span><br></pre></td></tr></table></figure></div>
+
+<h2 id="编写你的文档"><a href="#编写你的文档" class="headerlink" title="编写你的文档"></a>编写你的文档</h2><p>因为我们配置了 markdown 语法，所以我们只需要使用常规的markdown编译器，正常的写每一页文档即可。</p>
+<p>这里我就写了两页，代码结构+如何添加算法，如下，写完放进source的目录即可</p>
+<p><img  
+                     lazyload
+                     src="/images/loading.svg"
+                     data-src="/images/blog1.jpg"
+                      alt="img"
+                ></p>
+<blockquote>
+<p>注意，markdown语法需要把最高级的标题留给页面标题，例如用#一级标题写了页面的标题后，文章内容就只能用二级及以下的标题了，不然后面目录显示会有问题，会把文件所有最高级标题都作为目录标题</p>
+</blockquote>
+<h2 id="修改主页代码"><a href="#修改主页代码" class="headerlink" title="修改主页代码"></a>修改主页代码</h2><p>接下来我们去 <code>index.rst</code> 文件下，修改一下我们的主页内容以及左侧目录内容就差不多了</p>
+<div class="highlight-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="code"><pre><span class="line">.. AlgorithmViewer documentation master file, created by</span><br><span class="line">   sphinx-quickstart on Fri Apr 14 13:50:38 2023.</span><br><span class="line">   You can adapt this file completely to your liking, but it should at least</span><br><span class="line">   contain the root `toctree` directive.</span><br><span class="line"></span><br><span class="line">Welcome to AlgorithmViewer&#x27;s documentation!</span><br><span class="line">===========================================</span><br><span class="line"></span><br><span class="line">.. toctree::</span><br><span class="line">   :maxdepth: 2</span><br><span class="line">   :caption: Contents</span><br><span class="line">   </span><br><span class="line">   代码结构</span><br><span class="line">   如何添加算法</span><br></pre></td></tr></table></figure></div>
+
+<p>rst 的语法我也不太懂，所以只简单针对这一个文件作简单的分析</p>
+<p>.. 开头的类似于注释，不会被编译到网页上</p>
+<p>&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;上的一行就是我们的欢迎页标题，rst的标题等号长度不得小于文字长度</p>
+<p>toctree:: 声明了一个树状结构，也就是我们的目录，maxdepth就是层级的最深深度，2也就是只显示两层</p>
+<p>caption 指定目录的标题，这里的目录标题是 Contents</p>
+<p>然后在后面接上你编写的文档文件即可，按我的写法，最终生成的页面会是这样的</p>
+<p><img  
+                     lazyload
+                     src="/images/loading.svg"
+                     data-src="/images/Snipaste_2023-04-15_01-09-42-1024x614.jpg"
+                      alt="img"
+                ></p>
+<h2 id="生成HTML文件"><a href="#生成HTML文件" class="headerlink" title="生成HTML文件"></a>生成HTML文件</h2><p>配置完成后，我们就可以在根目录<code>docs</code>下执行编译命令了，也是一行代码的事</p>
+<div class="highlight-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="code"><pre><span class="line">make html</span><br></pre></td></tr></table></figure></div>
+
+<p>成功 build 后，我们就可以到 <code>build/html</code> 文件夹下，看到我们的HTML文件了，打开 index.html，就可以看到你的文档啦</p>
+]]></content>
+      <categories>
+        <category>好软推荐</category>
+      </categories>
+      <tags>
+        <tag>好软推荐</tag>
       </tags>
   </entry>
 </search>
