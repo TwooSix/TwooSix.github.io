@@ -47,7 +47,7 @@
   </url>
   
   <url>
-    <loc>https://twosix.page/2023/03/25/%E3%80%90Rust%E5%AD%A6%E4%B9%A0%E8%AE%B0%E5%BD%95%E3%80%913-%E9%80%9A%E7%94%A8%E7%BC%96%E7%A8%8B%E6%A6%82%E5%BF%B5/</loc>
+    <loc>https://twosix.page/2023/03/25/%E3%80%90Rust%E5%AD%A6%E4%B9%A0%E8%AE%B0%E5%BD%95%E3%80%912-%E7%8C%9C%E6%95%B0%E6%B8%B8%E6%88%8F%E2%80%94%E2%80%94%E5%B0%9D%E8%AF%95%E4%BB%A3%E7%A0%81%E7%BC%96%E5%86%99/</loc>
     
     <lastmod>2024-07-04</lastmod>
     
@@ -56,7 +56,7 @@
   </url>
   
   <url>
-    <loc>https://twosix.page/2023/03/25/%E3%80%90Rust%E5%AD%A6%E4%B9%A0%E8%AE%B0%E5%BD%95%E3%80%912-%E7%8C%9C%E6%95%B0%E6%B8%B8%E6%88%8F%E2%80%94%E2%80%94%E5%B0%9D%E8%AF%95%E4%BB%A3%E7%A0%81%E7%BC%96%E5%86%99/</loc>
+    <loc>https://twosix.page/2023/03/25/%E3%80%90Rust%E5%AD%A6%E4%B9%A0%E8%AE%B0%E5%BD%95%E3%80%913-%E9%80%9A%E7%94%A8%E7%BC%96%E7%A8%8B%E6%A6%82%E5%BF%B5/</loc>
     
     <lastmod>2024-07-04</lastmod>
     
@@ -202,7 +202,7 @@
 
   <url>
     <loc>https://twosix.page/</loc>
-    <lastmod>2024-10-29</lastmod>
+    <lastmod>2024-11-20</lastmod>
     <changefreq>daily</changefreq>
     <priority>1.0</priority>
   </url>
@@ -210,28 +210,28 @@
   
   <url>
     <loc>https://twosix.page/tags/cmake/</loc>
-    <lastmod>2024-10-29</lastmod>
+    <lastmod>2024-11-20</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.2</priority>
   </url>
   
   <url>
     <loc>https://twosix.page/tags/Rust/</loc>
-    <lastmod>2024-10-29</lastmod>
+    <lastmod>2024-11-20</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.2</priority>
   </url>
   
   <url>
     <loc>https://twosix.page/tags/%E5%89%8D%E7%AB%AF/</loc>
-    <lastmod>2024-10-29</lastmod>
+    <lastmod>2024-11-20</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.2</priority>
   </url>
   
   <url>
     <loc>https://twosix.page/tags/%E5%A5%BD%E8%BD%AF%E6%8E%A8%E8%8D%90/</loc>
-    <lastmod>2024-10-29</lastmod>
+    <lastmod>2024-11-20</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.2</priority>
   </url>
@@ -240,14 +240,14 @@
   
   <url>
     <loc>https://twosix.page/categories/%E7%BC%96%E7%A8%8B-%E8%AF%AD%E8%A8%80/</loc>
-    <lastmod>2024-10-29</lastmod>
+    <lastmod>2024-11-20</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.2</priority>
   </url>
   
   <url>
     <loc>https://twosix.page/categories/%E5%A5%BD%E8%BD%AF%E6%8E%A8%E8%8D%90/</loc>
-    <lastmod>2024-10-29</lastmod>
+    <lastmod>2024-11-20</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.2</priority>
   </url>

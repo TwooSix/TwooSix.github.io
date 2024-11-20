@@ -3,8 +3,8 @@ https://twosix.page/categories/index.html
 https://twosix.page/bangumis.json
 https://twosix.page/about/index.html
 https://twosix.page/bangumi/index.html
-https://twosix.page/2023/03/25/%E3%80%90Rust%E5%AD%A6%E4%B9%A0%E8%AE%B0%E5%BD%95%E3%80%913-%E9%80%9A%E7%94%A8%E7%BC%96%E7%A8%8B%E6%A6%82%E5%BF%B5/
 https://twosix.page/2023/03/25/%E3%80%90Rust%E5%AD%A6%E4%B9%A0%E8%AE%B0%E5%BD%95%E3%80%912-%E7%8C%9C%E6%95%B0%E6%B8%B8%E6%88%8F%E2%80%94%E2%80%94%E5%B0%9D%E8%AF%95%E4%BB%A3%E7%A0%81%E7%BC%96%E5%86%99/
+https://twosix.page/2023/03/25/%E3%80%90Rust%E5%AD%A6%E4%B9%A0%E8%AE%B0%E5%BD%95%E3%80%913-%E9%80%9A%E7%94%A8%E7%BC%96%E7%A8%8B%E6%A6%82%E5%BF%B5/
 https://twosix.page/2023/03/26/%E3%80%90Rust%E5%AD%A6%E4%B9%A0%E8%AE%B0%E5%BD%95%E3%80%914-%E6%89%80%E6%9C%89%E6%9D%83/
 https://twosix.page/2024/06/28/%E4%B8%BA%E4%BD%A0%E7%9A%84hexo%E5%8D%9A%E5%AE%A2%E6%B7%BB%E5%8A%A0%E4%B8%80%E4%B8%AA%E8%BF%BD%E7%95%AA%E5%88%97%E8%A1%A8/
 https://twosix.page/2023/04/15/%E4%BD%BF%E7%94%A8Sphinx%E4%B8%BA%E4%BD%A0%E7%9A%84%E9%A1%B9%E7%9B%AE%E5%BF%AB%E9%80%9F%E6%9E%84%E5%BB%BA%E6%96%87%E6%A1%A3/
