@@ -252,6 +252,238 @@
       </tags>
   </entry>
   <entry>
+    <title>【Rust 学习记录】12. 编写一个命令行程序</title>
+    <url>/2023/05/12/%E3%80%90Rust-%E5%AD%A6%E4%B9%A0%E8%AE%B0%E5%BD%95%E3%80%9112-%E7%BC%96%E5%86%99%E4%B8%80%E4%B8%AA%E5%91%BD%E4%BB%A4%E8%A1%8C%E7%A8%8B%E5%BA%8F/</url>
+    <content><![CDATA[<blockquote>
+<p>本章节我们将开始学习编写一个小项目——开发一个能够和文件系统交互并处理命令行输入、输出的工具</p>
+</blockquote>
+<h1 id="基本功能实现"><a href="#基本功能实现" class="headerlink" title="基本功能实现"></a>基本功能实现</h1><p>首先自然是新建一个项目，名为<em>minigrep</em></p>
+<div class="code-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="code"><pre><span class="line">cargo new minigrep</span><br></pre></td></tr></table></figure></div>
+
+<p>实现这一个工具的首要任务自然是接收命令行的参数，例如我们要实现在一个文件里搜索字符串，就得在运行时接收两个参数，一个待搜索的字符串，一个搜索的文件名，例如</p>
+<div class="code-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="code"><pre><span class="line">cargo run string filename.txt</span><br></pre></td></tr></table></figure></div>
+
+<p>这种基础的功能自然是已经有一些现成的crate可以使用来实现这些功能的了，不过因为我们的主要目的是学习，所以接下来我们会从零开始实现这些功能。</p>
+<h2 id="读取参数值"><a href="#读取参数值" class="headerlink" title="读取参数值"></a>读取参数值</h2><p>这一部分我们需要用到标准库里的<code>std::env::args</code>函数，这个函数会返回一个命令行参数的迭代器，使得程序可以读取所有传递给它的命令行参数值，放到一个动态数组里。</p>
+<p>用例：</p>
+<div class="code-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="code"><pre><span class="line">use std::env;</span><br><span class="line"></span><br><span class="line">fn main() &#123;</span><br><span class="line">    let args: Vec&lt;String&gt; = env::args().collect();</span><br><span class="line">    println!(&quot;&#123;:?&#125;&quot;, args);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
+
+<p>这段代码简单来说就是通过<code>env::args()</code>读取命令行参数的迭代器，再通过<code>collect()</code>函数自动遍历迭代器把参数收集到一个动态数组里并返回。</p>
+<p>接下来我们用终端运行代码，传入参数试试</p>
+<div class="code-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="code"><pre><span class="line">cargo run hahha arg   </span><br><span class="line">   Compiling minigrep v0.1.0 (E:\Code\rust\minigrep)</span><br><span class="line">    Finished dev [unoptimized + debuginfo] target(s) in 1.81s</span><br><span class="line">     Running `target\debug\minigrep.exe hahha arg`</span><br><span class="line">[&quot;target\\debug\\minigrep.exe&quot;, &quot;hahha&quot;, &quot;arg&quot;]</span><br></pre></td></tr></table></figure></div>
+
+<p>这里的输出的第一个参数是当前运行的程序的二进制文件入口路径，这一功能主要方便程序员打印程序名称&#x2F;路径，后续才是我们传入的参数字符串，一般情况下我们忽略第一个参数只处理后面两个即可。</p>
+<div class="code-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="code"><pre><span class="line">use std::env;</span><br><span class="line"></span><br><span class="line">fn main() &#123;</span><br><span class="line">    let args: Vec&lt;String&gt; = env::args().collect();</span><br><span class="line">    println!(&quot;&#123;:?&#125;&quot;, args);</span><br><span class="line">    </span><br><span class="line">    let query = &amp;args[1];</span><br><span class="line">    let filename = &amp;args[2];</span><br><span class="line"></span><br><span class="line">    println!(&quot;Searching for &#123;&#125;&quot;, query);</span><br><span class="line">    println!(&quot;In file &#123;&#125;&quot;, filename);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
+
+<p>接下来我们再运行以下这段代码，输出一切正常的话，第一步接收命令行参数的任务我们就完成啦！</p>
+<h2 id="读取文件"><a href="#读取文件" class="headerlink" title="读取文件"></a>读取文件</h2><p>既然是要在文件内容里搜索指定字符串，自然要读取文件的内容了。但在这之前我们要先有一个文件，现在我们在项目的<strong>根目录</strong>下，新建一个<code>poem.txt</code>文件，内容就选择书上给的这首诗吧：</p>
+<div class="code-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="code"><pre><span class="line">I&#x27;m nobody! Who are you?</span><br><span class="line">Are you nobody, too?</span><br><span class="line">Then there&#x27;s a pair of us - don&#x27;t tell!</span><br><span class="line">They&#x27;d banish us, you know.</span><br><span class="line"></span><br><span class="line">How dreary to be somebody!</span><br><span class="line">How public, like a frog</span><br><span class="line">To tell your name the livelong day</span><br><span class="line">To an admiring bog!</span><br></pre></td></tr></table></figure></div>
+
+<p>接下来，我们就可以在代码里读取这个文件了，也很简单，用之前使用过的<code>fs</code>库即可，代码如下。</p>
+<div class="code-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="code"><pre><span class="line">use std::env;</span><br><span class="line">use std::fs;</span><br><span class="line"></span><br><span class="line">fn main() &#123;</span><br><span class="line">    let args: Vec&lt;String&gt; = env::args().collect();</span><br><span class="line">    println!(&quot;&#123;:?&#125;&quot;, args);</span><br><span class="line">    </span><br><span class="line">    let query = &amp;args[1];</span><br><span class="line">    let filename = &amp;args[2];</span><br><span class="line"></span><br><span class="line">    println!(&quot;Searching for &#123;&#125;&quot;, query);</span><br><span class="line">    println!(&quot;In file &#123;&#125;&quot;, filename);</span><br><span class="line"></span><br><span class="line">    let contents = fs::read_to_string(filename).expect(&quot;Error in reading file&quot;);</span><br><span class="line">    println!(&quot;With text:\n&#123;&#125;&quot;, contents)</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
+
+<p>接下来，再运行以下这段代码，用命令行传递参数的方法传递我们的文件名poem.txt</p>
+<div class="code-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="code"><pre><span class="line">cargo run bog poem.txt       </span><br><span class="line">   Compiling minigrep v0.1.0 (E:\Code\rust\minigrep)</span><br><span class="line">    Finished dev [unoptimized + debuginfo] target(s) in 0.63s</span><br><span class="line">     Running `target\debug\minigrep.exe bog poem.txt`</span><br><span class="line">[&quot;target\\debug\\minigrep.exe&quot;, &quot;bog&quot;, &quot;poem.txt&quot;]</span><br><span class="line">Searching for bog</span><br><span class="line">In file poem.txt</span><br><span class="line">With text:</span><br><span class="line">I&#x27;m nobody! Who are you?</span><br><span class="line">Are you nobody, too?</span><br><span class="line">Then there&#x27;s a pair of us - don&#x27;t tell!</span><br><span class="line">They&#x27;d banish us, you know.</span><br><span class="line"></span><br><span class="line">How dreary to be somebody!</span><br><span class="line">How public, like a frog</span><br><span class="line">To tell your name the livelong day</span><br><span class="line">To an admiring bog!</span><br></pre></td></tr></table></figure></div>
+
+<p>可见，顺利的输出了我们的文件内容，代码没有问题。</p>
+<p>到此为止，我们的基本功能就实现完了。但目前为止，我们现在写的代码都一股脑的堆积在<code>main.rs</code>里，非常简单，但也不具备可扩展性以及可维护性，远远称不上一个”项目”。接下来我们就要用到之前学习的模块化管理的知识，重构一下我们的代码，让它变得更规范化。</p>
+<h1 id="模块化与错误处理"><a href="#模块化与错误处理" class="headerlink" title="模块化与错误处理"></a>模块化与错误处理</h1><h2 id="问题与计划"><a href="#问题与计划" class="headerlink" title="问题与计划"></a>问题与计划</h2><p>接下来我们将针对以下四个问题，来制定计划重构我们的代码：</p>
+<ol>
+<li>功能如果都堆积在main函数里的话，随着我们的功能越来越多，这个文件的代码将会变得越来越复杂，越来越难让人理解，更难去测试，耦合程度很高。所以我们要把函数拆分开来，一个函数负责一个任务</li>
+<li>query和filename是存储程序配置的，contents是用于业务逻辑的，当一个作用域的变量越来越多时，我们就很难准确的追踪每个变量的实际用途；所以我们最好应该把用途相同的变量合并到一个结构体里，方便管理也明确用途。</li>
+<li>错误处理方面处理的不够详细，读取文件失败可能有很多原因，我们应该准确定位到每个原因，抛出相关的提示，给用户提供更有效的排错信息。</li>
+<li>错误管理也应该模块化，例如当用户没有指定运行参数时，底层报错是一个数组越位时，抛出错误”index out of bounds”，这无法帮助用户有效的理解问题本身，我们最好把用于错误处理的代码集中管理，更加方便的处理相关的错误逻辑，也方便为用户打印有意义，便于理解的报错信息。</li>
+</ol>
+<h2 id="二进制项目的组织结构"><a href="#二进制项目的组织结构" class="headerlink" title="二进制项目的组织结构"></a>二进制项目的组织结构</h2><p>Rust社区对于程序的组织结构有一套自己的原则</p>
+<ol>
+<li>程序拆分为main.rs和lib.rs，实际的逻辑放在lib.rs，main.rs只作简单调用</li>
+<li>如果逻辑相对简单，再考虑留在main.rs，保留在main中的代码量应该小到可以一眼看出这段代码的正确性</li>
+</ol>
+<p>也就是，main负责运行，lib负责实际逻辑，同时由上一章自动化测试可知，如果我们把逻辑放到lib.rs也更方便我们编写集成测试的代码。</p>
+<p>所以，我们这个项目的main函数功能大概如下</p>
+<ul>
+<li>处理命令行参数</li>
+<li>程序配置的变量</li>
+<li>调用lib.rs中的run函数</li>
+<li>对run函数进行错误处理</li>
+</ul>
+<p>接下来我们就可以开始按照以上原则重构了</p>
+<h2 id="分离基本功能逻辑"><a href="#分离基本功能逻辑" class="headerlink" title="分离基本功能逻辑"></a>分离基本功能逻辑</h2><h3 id="提取解析参数代码"><a href="#提取解析参数代码" class="headerlink" title="提取解析参数代码"></a>提取解析参数代码</h3><p>首先，我们把解析参数做成一个函数，提供main函数调用，方便后面再把这个功能转移到lib</p>
+<div class="code-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="code"><pre><span class="line">use std::env;</span><br><span class="line">use std::fs;</span><br><span class="line"></span><br><span class="line">fn main() &#123;</span><br><span class="line">    let args: Vec&lt;String&gt; = env::args().collect();</span><br><span class="line">    println!(&quot;&#123;:?&#125;&quot;, args);</span><br><span class="line">    </span><br><span class="line">    let (query, filename) = parse_config(&amp;args);</span><br><span class="line"></span><br><span class="line">    println!(&quot;Searching for &#123;&#125;&quot;, query);</span><br><span class="line">    println!(&quot;In file &#123;&#125;&quot;, filename);</span><br><span class="line"></span><br><span class="line">    let contents = fs::read_to_string(filename).expect(&quot;Error in reading file&quot;);</span><br><span class="line">    println!(&quot;With text:\n&#123;&#125;&quot;, contents)</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">fn parse_config(args: &amp;Vec&lt;String&gt;) -&gt; (&amp;str, &amp;str)&#123;</span><br><span class="line">    let query = &amp;args[1];</span><br><span class="line">    let filename = &amp;args[2];</span><br><span class="line">    (query, filename)</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
+
+<h3 id="组合参数值"><a href="#组合参数值" class="headerlink" title="组合参数值"></a>组合参数值</h3><p>上面的代码我们选择返回一个元组，又把一个元组拆分成两个变量，这还是有点意义不明，不方便使用，所以我们选择把这两个值放到一个结构体里，再用两个明确的变量名存储这两个参数，使得这个函数的返回值更加明确。</p>
+<div class="code-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="code"><pre><span class="line">use std::env;</span><br><span class="line">use std::fs;</span><br><span class="line"></span><br><span class="line">fn main() &#123;</span><br><span class="line">    let args: Vec&lt;String&gt; = env::args().collect();</span><br><span class="line">    println!(&quot;&#123;:?&#125;&quot;, args);</span><br><span class="line">    </span><br><span class="line">    let config = parse_config(&amp;args);</span><br><span class="line"></span><br><span class="line">    println!(&quot;Searching for &#123;&#125;&quot;, config.query);</span><br><span class="line">    println!(&quot;In file &#123;&#125;&quot;, config.filename);</span><br><span class="line"></span><br><span class="line">    let contents = fs::read_to_string(config.filename).expect(&quot;Error in reading file&quot;);</span><br><span class="line">    println!(&quot;With text:\n&#123;&#125;&quot;, contents)</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">struct Config&#123;</span><br><span class="line">    query: String,</span><br><span class="line">    filename: String,</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">fn parse_config(args: &amp;Vec&lt;String&gt;) -&gt; Config&#123;</span><br><span class="line">    let config = Config&#123;</span><br><span class="line">        query: args[1].clone(),</span><br><span class="line">        filename: args[2].clone(),</span><br><span class="line">    &#125;;</span><br><span class="line">    config</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
+
+<p>这里，我们定义了一个<code>Config</code>结构体来存储我们的配置值，同时，秉持着结构体最好还是持有自己变量所有权的理念，这里我们需要把字符串clone一下再存入config变量，这种做法虽然比起直接使用引用多用了一些时间和内存，但也省去写生命周期的麻烦，也增加了代码可读性，毕竟开发效率也是效率，该做的牺牲还得做。</p>
+<p>可见，现在main函数里解析参数，使用参数的逻辑已经非常清晰了。</p>
+<blockquote>
+<p>有人对运行时代价很敏感，就是不喜欢用clone解决所有权问题，这个后面在13章会学习一些其他方法更有效率的处理这种情形。但对于我们现在来说，clone是一点没有问题的，因为我们这里的字符串只有读取程序参数的时候用一次clone，而且还只是两个很短的字符串，这点性能真算不上浪费。</p>
+</blockquote>
+<h3 id="为Config创建一个构造器"><a href="#为Config创建一个构造器" class="headerlink" title="为Config创建一个构造器"></a>为Config创建一个构造器</h3><p>这时候我们再回头看一下，其实<code>parse_config</code>这个函数和我们的<code>Config</code>结构体也是紧密相关的，因为parse_config的目的就是构造一个Config结构体变量，那我们为什么不在Config结构体里写一个构造函数来实现同样的功能，增强这个函数和Config结构体的相关性，更好理解呢</p>
+<div class="code-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="code"><pre><span class="line">use std::env;</span><br><span class="line">use std::fs;</span><br><span class="line"></span><br><span class="line">fn main() &#123;</span><br><span class="line">    let args: Vec&lt;String&gt; = env::args().collect();</span><br><span class="line">    println!(&quot;&#123;:?&#125;&quot;, args);</span><br><span class="line">    </span><br><span class="line">    let config = Config::new(&amp;args);</span><br><span class="line"></span><br><span class="line">    println!(&quot;Searching for &#123;&#125;&quot;, config.query);</span><br><span class="line">    println!(&quot;In file &#123;&#125;&quot;, config.filename);</span><br><span class="line"></span><br><span class="line">    let contents = fs::read_to_string(config.filename).expect(&quot;Error in reading file&quot;);</span><br><span class="line">    println!(&quot;With text:\n&#123;&#125;&quot;, contents)</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">struct Config&#123;</span><br><span class="line">    query: String,</span><br><span class="line">    filename: String,</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">impl Config &#123;</span><br><span class="line">    fn new(args: &amp;Vec&lt;String&gt;) -&gt; Config&#123;</span><br><span class="line">        let query = args[1].clone();</span><br><span class="line">        let filename = args[2].clone();</span><br><span class="line">        Config&#123;query, filename&#125;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
+
+<p>于是我们的代码变成了上面这样，使用<code>Config::new</code>代替了之前的<code>parse_config</code>，并顺利运行。</p>
+<h3 id="分离主体逻辑"><a href="#分离主体逻辑" class="headerlink" title="分离主体逻辑"></a>分离主体逻辑</h3><p>这里我们的项目主体运行逻辑就是打开文件并搜索字符串，目前我们只写了打开文件，就先把这部分拆出来，写到<code>run</code>函数里</p>
+<div class="code-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="code"><pre><span class="line">fn run(config: Config)&#123;</span><br><span class="line">    let contents = fs::read_to_string(config.filename)</span><br><span class="line">        .expect(&quot;Error in reading file&quot;);</span><br><span class="line">    println!(&quot;With text:\n&#123;&#125;&quot;, contents);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
+
+<h2 id="错误处理"><a href="#错误处理" class="headerlink" title="错误处理"></a>错误处理</h2><p>依照计划，现在我们开始修复一下错误处理相关的逻辑</p>
+<h3 id="改进错误提示信息"><a href="#改进错误提示信息" class="headerlink" title="改进错误提示信息"></a>改进错误提示信息</h3><p>首先，第一个能想到的错误就是，用户输入的参数不够，例如没有输入参数时，程序会报错“index out of bounds: the len is 1 but the index is 1”，但这个错误会让用户不知所云，所以我们需要完善一下报错提示：</p>
+<div class="code-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="code"><pre><span class="line">impl Config &#123;</span><br><span class="line">    fn new(args: &amp;Vec&lt;String&gt;) -&gt; Config&#123;</span><br><span class="line">        if args.len() &lt; 3 &#123;</span><br><span class="line">            panic!(&quot;Not enough arguments&quot;);</span><br><span class="line">        &#125;</span><br><span class="line">        let query = args[1].clone();</span><br><span class="line">        let filename = args[2].clone();</span><br><span class="line">        Config&#123;query, filename&#125;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
+
+<p>在参数数量少于3个的时候，我们主动抛出panic，提示参数不够，这时的报错信息就更人性化了。</p>
+<h3 id="返回Result而不是直接Panic"><a href="#返回Result而不是直接Panic" class="headerlink" title="返回Result而不是直接Panic"></a>返回Result而不是直接Panic</h3><p>对于函数里的错误，使用Result作为返回结果，让调用函数的用户决定是否panic的方法会更加友好一点。所以我们再修改一下这个new函数，让它在运行成功时返回一个Config变量，在失败时返回报错信息</p>
+<div class="code-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="code"><pre><span class="line">impl Config &#123;</span><br><span class="line">    fn new(args: &amp;Vec&lt;String&gt;) -&gt; Result&lt;Config, &amp;str&gt;&#123;</span><br><span class="line">        if args.len() &lt; 3 &#123;</span><br><span class="line">            return Err(&quot;Not enough arguments&quot;)</span><br><span class="line">        &#125;</span><br><span class="line">        let query = args[1].clone();</span><br><span class="line">        let filename = args[2].clone();</span><br><span class="line">        Ok(Config&#123;query, filename&#125;)</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
+
+<p>因为修改了返回值，所以我们还需要对应修改一下main函数的逻辑</p>
+<div class="code-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="code"><pre><span class="line">use std::env;</span><br><span class="line">use std::fs;</span><br><span class="line">use std::process;</span><br><span class="line"></span><br><span class="line">fn main() &#123;</span><br><span class="line">    let args: Vec&lt;String&gt; = env::args().collect();</span><br><span class="line">    </span><br><span class="line">    let config = Config::new(&amp;args).unwrap_or_else(|err|&#123;</span><br><span class="line">        println!(&quot;Problem parsing args: &#123;&#125;&quot;, err);</span><br><span class="line">        process::exit(1);</span><br><span class="line">    &#125;);</span><br><span class="line"></span><br><span class="line">    println!(&quot;Searching for &#123;&#125;&quot;, config.query);</span><br><span class="line">    println!(&quot;In file &#123;&#125;&quot;, config.filename);</span><br><span class="line"></span><br><span class="line">    let contents = fs::read_to_string(config.filename).expect(&quot;Error in reading file&quot;);</span><br><span class="line">    println!(&quot;With text:\n&#123;&#125;&quot;, contents)</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
+
+<p>在以上代码里</p>
+<ol>
+<li>我们新use了一个process库用来退出程序</li>
+<li>我们使用了之前没用过的错误处理函数<code>unwrap_or_else</code>，其大致工作内容也很简单，主要就是捕获错误信息，把报错信息传入闭包<code>err</code>中，作为参数传递进下面的花括号（匿名函数）里，运行花括号的代码。如果没有报错，则自动获取Ok里存储的变量返回。大致就是，和<code>unwrap</code>类似，不过多了一个可以执行额外错误处理代码的功能</li>
+</ol>
+<p>现在我们再来跑一个错误的命令，来看看报错提示</p>
+<div class="code-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="code"><pre><span class="line">cargo run             </span><br><span class="line">    Finished dev [unoptimized + debuginfo] target(s) in 0.00s</span><br><span class="line">     Running `target\debug\minigrep.exe`</span><br><span class="line">Problem parsing args: Not enough arguments</span><br><span class="line">error: process didn&#x27;t exit successfully: `target\debug\minigrep.exe` (exit code: 1)</span><br></pre></td></tr></table></figure></div>
+
+<p>完美，提示简短且易懂。</p>
+<p>此外，对于run函数我们也作同样的操作；</p>
+<div class="code-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="code"><pre><span class="line">use std::error::Error;</span><br><span class="line"></span><br><span class="line">fn run(config: Config) -&gt; Result&lt;(), Box&lt;dyn Error&gt;&gt;&#123;</span><br><span class="line">    let contents = fs::read_to_string(config.filename)?;</span><br><span class="line">    println!(&quot;With text:\n&#123;&#125;&quot;, contents);</span><br><span class="line">    Ok(())</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
+
+<p>对于run，我们使用了一种新的处理方式-&gt;问号表达式，之前学过，这可以自动为我们在有错误的时候返回错误，减少代码的编写量；然后我们use了一个新的东西<code>std::error::Error</code>，并且使用了一个叫做<code>Box</code>的trait，指定返回的值是一个<code>Error</code>的trait，同时使用了dyn关键词；这里的主要作用就是，因为问号表达式返回的错误类型不是我们容易知道的，所以使用trait的方法可以方便的，动态的帮我们捕获不同的错误类型并进行返回。最后，因为run函数不需要返回什么值，所以只需要Ok里包含空元组就可以了。</p>
+<p>同样的，最后再修改一下main函数，处理返回的Result即可</p>
+<div class="code-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="code"><pre><span class="line">fn main() &#123;</span><br><span class="line">    let args: Vec&lt;String&gt; = env::args().collect();</span><br><span class="line">    </span><br><span class="line">    let config = Config::new(&amp;args).unwrap_or_else(|err|&#123;</span><br><span class="line">        println!(&quot;Problem parsing args: &#123;&#125;&quot;, err);</span><br><span class="line">        process::exit(1);</span><br><span class="line">    &#125;);</span><br><span class="line"></span><br><span class="line">    println!(&quot;Searching for &#123;&#125;&quot;, config.query);</span><br><span class="line">    println!(&quot;In file &#123;&#125;&quot;, config.filename);</span><br><span class="line"></span><br><span class="line">    if let Err(e) = run(config)&#123;</span><br><span class="line">        println!(&quot;Application error: &#123;&#125;&quot;, e);</span><br><span class="line">        process::exit(1);</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
+
+<p>这里我们也使用了一种新的处理方式，也就是在<a href="https://twosix.page/archives/327">6. 枚举与模式匹配</a>里学到的if let语句，用于匹配枚举类型中的其中一种情况。这里因为我们的run函数必定返回一个空元组，所以我们没必要通过unwrap_or_else提取这个空元组，所以简单对Err这种情况进行处理即可。</p>
+<p>当然，语言是很灵活的，我们也可以选择使用match等语句处理我们的报错。</p>
+<h2 id="把代码分离成独立的包"><a href="#把代码分离成独立的包" class="headerlink" title="把代码分离成独立的包"></a>把代码分离成独立的包</h2><p>代码基本已经分离完成了，现在我们只需要把分离的代码放到lib.rs里即可。</p>
+<div class="code-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="code"><pre><span class="line">use std::fs;</span><br><span class="line">use std::error::Error;</span><br><span class="line"></span><br><span class="line">pub struct Config&#123;</span><br><span class="line">    pub query: String,</span><br><span class="line">    pub filename: String,</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">impl Config &#123;</span><br><span class="line">    pub fn new(args: &amp;Vec&lt;String&gt;) -&gt; Result&lt;Config, &amp;str&gt;&#123;</span><br><span class="line">        if args.len() &lt; 3 &#123;</span><br><span class="line">            return Err(&quot;Not enough arguments&quot;);</span><br><span class="line">        &#125;</span><br><span class="line">        let query = args[1].clone();</span><br><span class="line">        let filename = args[2].clone();</span><br><span class="line">        Ok(Config&#123;query, filename&#125;)</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">pub fn run(config: Config) -&gt; Result&lt;(), Box&lt;dyn Error&gt;&gt;&#123;</span><br><span class="line">    let contents = fs::read_to_string(config.filename)?;</span><br><span class="line">    println!(&quot;With text:\n&#123;&#125;&quot;, contents);</span><br><span class="line">    Ok(())</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
+
+<p>别忘了声明接口为pub，让外部可以调用~以及相关的use语句也要搬过来。</p>
+<p>搬迁完毕，接下来只要到main.rs里把我们的库use进来即可，或者不用use，直接使用顶层包进行绝对路径访问也没问题，详见<a href="https://twosix.page/archives/332">7. 包、单元包和模块</a></p>
+<div class="code-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="code"><pre><span class="line">use std::env;</span><br><span class="line">use std::process;</span><br><span class="line"></span><br><span class="line">use minigrep::Config;</span><br><span class="line"></span><br><span class="line">fn main() &#123;</span><br><span class="line">    let args: Vec&lt;String&gt; = env::args().collect();</span><br><span class="line">    </span><br><span class="line">    let config = Config::new(&amp;args).unwrap_or_else(|err|&#123;</span><br><span class="line">        println!(&quot;Problem parsing args: &#123;&#125;&quot;, err);</span><br><span class="line">        process::exit(1);</span><br><span class="line">    &#125;);</span><br><span class="line"></span><br><span class="line">    println!(&quot;Searching for &#123;&#125;&quot;, config.query);</span><br><span class="line">    println!(&quot;In file &#123;&#125;&quot;, config.filename);</span><br><span class="line"></span><br><span class="line">    if let Err(e) = minigrep::run(config)&#123;</span><br><span class="line">        println!(&quot;Application error: &#123;&#125;&quot;, e);</span><br><span class="line">        process::exit(1);</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
+
+<p>这里的Config就是通过use导入，run函数因为处于顶层，所以使用我们顶层包名minigrep直接调用也很方便（如果你创建项目的时候名字不是minigrep记得改成你的项目名字）</p>
+<p>运行通过！我们的基础功能就基本完成了，后面再把用于测试用的<code>println</code>语句删除就好。</p>
+<p>好了，以上代码基本结合了我们学习的大部分内容了，用模块化的思路设计完基本功能逻辑完成后，接下来就该结合一下我们测试的知识了</p>
+<h1 id="使用测试驱动开发来编写库功能"><a href="#使用测试驱动开发来编写库功能" class="headerlink" title="使用测试驱动开发来编写库功能"></a>使用测试驱动开发来编写库功能</h1><p>软件主要功能是搜索文件里的字符串，那还差一个搜索的功能。本小节就主要讲的是按照测试驱动开发（TDD）的流程来开发搜索的逻辑。大概是以下步骤</p>
+<ol>
+<li>编写一个必然失败的测试，运行测试，确保它一定失败</li>
+<li>编写或修改刚好足够多的代码，让测试通过</li>
+<li>在保证测试通过的前提下，重构代码</li>
+<li>回到步骤1，进行开发</li>
+</ol>
+<p>这只是其中一种开发技术，主要思想是：优先编写测试，再编写能通过测试的代码，有助于开发过程中保持较高的测试覆盖率。</p>
+<p>接下来，我们就开始第一步</p>
+<h2 id="编写一个会失败的测试"><a href="#编写一个会失败的测试" class="headerlink" title="编写一个会失败的测试"></a>编写一个会失败的测试</h2><p><strong>lib.rs</strong></p>
+<div class="code-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="code"><pre><span class="line">mod test&#123;</span><br><span class="line">    use super::*;</span><br><span class="line"></span><br><span class="line">    #[test]</span><br><span class="line">    fn one_result()&#123;</span><br><span class="line">        let query = &quot;duct&quot;;</span><br><span class="line">        let content = &quot;</span><br><span class="line">Rust:</span><br><span class="line">safe, fast, productive.</span><br><span class="line">Pick three.&quot;;</span><br><span class="line">        </span><br><span class="line">        assert_eq!(vec![&quot;safe, fast, productive.&quot;], search(query, content));</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
+
+<p>这里我们编写了一个测试模块，给出了测试用的查询字符串，以及内容字符串，再调用了一下实现搜索的功能函数，断言搜索的结果是一个vec数组；</p>
+<p>现在我们还没实现search功能，所以后面就来实现一下。但因为我们首先要编写一个必然失败的测试，所以我们先来试试写一个函数，必然返回空数组，这样就和断言的结果不同，导致失败。</p>
+<div class="code-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="code"><pre><span class="line">pub fn search&lt;&#x27;a&gt;(query: &amp;str, contents: &amp;&#x27;a str) -&gt; Vec&lt;&amp;&#x27;a str&gt;&#123;</span><br><span class="line">    vec![]</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
+
+<p>这里因为我们选择传入字符串的引用，所以需要使用生命周期，这里返回的值主要存的是contents里的部分内容，所以只需要在contents和返回值里标上生命周期即可，query并不需要</p>
+<p>接下来我们用<code>cargo test</code>运行一下测试吧</p>
+<div class="code-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="code"><pre><span class="line">running 1 test</span><br><span class="line">test test::one_result ... FAILED</span><br><span class="line"></span><br><span class="line">failures:</span><br><span class="line"></span><br><span class="line">---- test::one_result stdout ----</span><br><span class="line">thread &#x27;test::one_result&#x27; panicked at &#x27;assertion failed: `(left == right)`</span><br><span class="line">  left: `[&quot;safe, fast, productive.&quot;]`,</span><br><span class="line"> right: `[]`&#x27;, src\lib.rs:41:9</span><br><span class="line">note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace</span><br><span class="line"></span><br><span class="line"></span><br><span class="line">failures:</span><br><span class="line">    test::one_result</span><br><span class="line"></span><br><span class="line">test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s</span><br></pre></td></tr></table></figure></div>
+
+<p>输出测试失败，左右不相等，一切按我们计划的在走，那接下来就是第二步了，编写或修改代码，让测试通过。</p>
+<h2 id="编写可以通过测试的代码"><a href="#编写可以通过测试的代码" class="headerlink" title="编写可以通过测试的代码"></a>编写可以通过测试的代码</h2><p>接下来我们按照正常的思路实验一下search函数的功能：</p>
+<ol>
+<li>遍历内容的每一行</li>
+<li>搜索行里是否包含搜索的字符串</li>
+<li>如果包含，就把这行添加到列表里；否则忽略</li>
+<li>返回列表</li>
+</ol>
+<div class="code-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="code"><pre><span class="line">pub fn search&lt;&#x27;a&gt;(query: &amp; str, contents: &amp;&#x27;a str) -&gt; Vec&lt;&amp;&#x27;a str&gt;&#123;</span><br><span class="line">    let mut ret = Vec::new();</span><br><span class="line">    for eachline in contents.lines()  &#123;</span><br><span class="line">        if eachline.contains(query)&#123;</span><br><span class="line">            ret.push(eachline);</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">    ret</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
+
+<p>大概解释一下：</p>
+<ol>
+<li>new了一个可变的动态列表<code>ret</code>，用来存返回值</li>
+<li>用for循环遍历contents的每一行，lines()函数可以把字符串分割成若干行，返回一个迭代器</li>
+<li>使用contains函数判断query是否是eachline的子串，如果是，push到ret里</li>
+<li>返回ret</li>
+</ol>
+<p>最后再运行一下测试，不出意外就通过了。</p>
+<h2 id="把search集成到run函数内"><a href="#把search集成到run函数内" class="headerlink" title="把search集成到run函数内"></a>把search集成到run函数内</h2><p>上面已经把所有要写的都写完啦，可以集成功能并试着运行了</p>
+<div class="code-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="code"><pre><span class="line">pub fn run(config: Config) -&gt; Result&lt;(), Box&lt;dyn Error&gt;&gt;&#123;</span><br><span class="line">    let contents = fs::read_to_string(config.filename)?;</span><br><span class="line">    for (i, line) in search(&amp;config.query, &amp;contents).iter().enumerate()&#123;</span><br><span class="line">        println!(&quot;&#123;&#125;: &#123;&#125;\n&quot;, i, line);</span><br><span class="line">    &#125;</span><br><span class="line">    Ok(())</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
+
+<p>也简单解释一下：</p>
+<ol>
+<li>通过for循环遍历所有的搜索结果</li>
+<li>通过.iter().enumerate()让迭代器生成的结果附带上当前的循环次数</li>
+<li>输出搜索的结果</li>
+</ol>
+<p>接下来就通过我们熟悉的命令行参数运行程序吧：<code>cargo run frog poem.txt</code></p>
+<div class="code-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="code"><pre><span class="line">cargo run frog poem.txt</span><br><span class="line">   Compiling minigrep v0.1.0 (E:\Code\rust\minigrep)</span><br><span class="line">    Finished dev [unoptimized + debuginfo] target(s) in 0.26s</span><br><span class="line">     Running `target\debug\minigrep.exe frog poem.txt`</span><br><span class="line">0: How public, like a frog</span><br></pre></td></tr></table></figure></div>
+
+<p>完美。</p>
+<h1 id="处理环境变量"><a href="#处理环境变量" class="headerlink" title="处理环境变量"></a>处理环境变量</h1><p>如果有这么一个参数，例如是否开启不分大小写搜索，那每次用户启动的时候都需要通过命令行来输入一串指令开启就有点太麻烦了。这一部分我们就基于此优化一下我们的代码，主要依赖的就是<strong>环境变量</strong>。</p>
+<p>同样基于TDD的计划流程来编写功能。</p>
+<h2 id="编写一个必然失败的不区分大小写搜索测试"><a href="#编写一个必然失败的不区分大小写搜索测试" class="headerlink" title="编写一个必然失败的不区分大小写搜索测试"></a>编写一个必然失败的不区分大小写搜索测试</h2><p>首先是写测试，就不解释了，主要是实现了两个测试，一个大小写敏感和一个大小写不敏感。</p>
+<div class="code-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="code"><pre><span class="line">#[cfg(test)]</span><br><span class="line">mod test&#123;</span><br><span class="line">    use super::*;</span><br><span class="line"></span><br><span class="line">    #[test]</span><br><span class="line">    fn one_result()&#123;</span><br><span class="line">        let query = &quot;duct&quot;;</span><br><span class="line">        let content = &quot;</span><br><span class="line">Rust:</span><br><span class="line">safe, fast, productive.</span><br><span class="line">Pick three.&quot;;</span><br><span class="line">        </span><br><span class="line">        assert_eq!(vec![&quot;safe, fast, productive.&quot;], search(query, content));</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    #[test]</span><br><span class="line">    fn case_sensitive()&#123;</span><br><span class="line">        let query = &quot;duct&quot;;</span><br><span class="line">        let content = &quot;</span><br><span class="line">Rust:</span><br><span class="line">safe, fast, productive.</span><br><span class="line">Pick three.</span><br><span class="line">Duct tape.&quot;;</span><br><span class="line"></span><br><span class="line">        assert_eq!(vec![&quot;safe, fast, productive.&quot;], search(query, content));</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    #[test]</span><br><span class="line">    fn case_insensitive()&#123;</span><br><span class="line">        let query = &quot;rUst&quot;;</span><br><span class="line">        let content = &quot;</span><br><span class="line">Rust:</span><br><span class="line">safe, fast, productive.</span><br><span class="line">Pick three.</span><br><span class="line">Trust me.&quot;;</span><br><span class="line">        assert_eq!(vec![&quot;Rust:&quot;, &quot;Trust me.&quot;], search_case_insensitive(query, content));</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
+
+<p>这里省略掉实现search_case_insensitive返回空数组，导致测试失败的部分。可以自己试试，观察是否确保测试失败。</p>
+<h2 id="编写能通过测试的代码"><a href="#编写能通过测试的代码" class="headerlink" title="编写能通过测试的代码"></a>编写能通过测试的代码</h2><p>然后是实现大小写不敏感的搜索功能函数，所谓大小写不敏感，其实就是把所有字母转成小写&#x2F;大小再来作比较。</p>
+<div class="code-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="code"><pre><span class="line">pub fn search_case_insensitive&lt;&#x27;a&gt;(query: &amp;str, contents: &amp;&#x27;a str) -&gt; Vec&lt;&amp;&#x27;a str&gt;&#123;</span><br><span class="line">    let mut ret = Vec::new();</span><br><span class="line">    let query = query.to_lowercase();</span><br><span class="line">    for eachline in contents.lines()  &#123;</span><br><span class="line">        if eachline.to_lowercase().contains(&amp;query)&#123;</span><br><span class="line">            ret.push(eachline);</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">    ret</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
+
+<p>以上代码需要注意的是：因为<code>to_lowercase</code>函数把字符串原来的数据更改了，所以会创建一个新的字符串存储新的数据，所以这里我们的query变成了拥有自己所有权的String变量，而不再是原来的字符串切片，所以后续传入contains时又使用了&amp;来借用。</p>
+<p>运行测试通过的话，就没有问题了。</p>
+<h2 id="把功能搬迁到run函数内"><a href="#把功能搬迁到run函数内" class="headerlink" title="把功能搬迁到run函数内"></a>把功能搬迁到run函数内</h2><p>因为用户自行决定是否开启大小写敏感的功能，所以要新增一个配置项来存储这个结果，所以我们修改一个Config结构</p>
+<div class="code-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="code"><pre><span class="line">pub struct Config&#123;</span><br><span class="line">    pub query: String,</span><br><span class="line">    pub filename: String,</span><br><span class="line">    pub is_sensitive: bool,</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
+
+<p>接下来，再结合is_sensitive把search_case_insensitive的功能搬到run函数里就差不多了</p>
+<div class="code-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="code"><pre><span class="line">pub fn run(config: Config) -&gt; Result&lt;(), Box&lt;dyn Error&gt;&gt;&#123;</span><br><span class="line">    let contents = fs::read_to_string(config.filename)?;</span><br><span class="line">    let result = if config.is_sensitive&#123;</span><br><span class="line">        search(&amp;config.query, &amp;contents)</span><br><span class="line">    &#125;</span><br><span class="line">    else&#123;</span><br><span class="line">        search_case_insensitive(&amp;config.query, &amp;contents)</span><br><span class="line">    &#125;;</span><br><span class="line">    for (i, line) in result.iter().enumerate()&#123;</span><br><span class="line">        println!(&quot;&#123;&#125;: &#123;&#125;\n&quot;, i, line);</span><br><span class="line">    &#125;</span><br><span class="line">    Ok(())</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
+
+<p>不过这段代码还不能编译通过，因为我们还没修改Config的new函数。这里因为我们不希望通过之前的命令行参数解析的方法来得到is_sensitive的值，所以我们要使用新的方法——读取环境变量。</p>
+<p>环境变量可以让一个参数的值再整个会话内都有效，就不需要每次运行都输入一遍了，很方便。</p>
+<div class="code-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="code"><pre><span class="line">impl Config &#123;</span><br><span class="line">    pub fn new(args: &amp;Vec&lt;String&gt;) -&gt; Result&lt;Config, &amp;str&gt;&#123;</span><br><span class="line">        if args.len() &lt; 3 &#123;</span><br><span class="line">            return Err(&quot;Not enough arguments&quot;);</span><br><span class="line">        &#125;</span><br><span class="line">        let query = args[1].clone();</span><br><span class="line">        let filename = args[2].clone();</span><br><span class="line">        let is_sensitive = !(env::var(&quot;SENSITIVE&quot;).is_err());</span><br><span class="line">        Ok(Config&#123;query, filename, is_sensitive&#125;)</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
+
+<ol>
+<li>我们新use了env，用来读取环境变量</li>
+<li>添加了新的一行，通过env的var函数，读取名为“SENSITIVE”的环境变量</li>
+<li>用Result的is_err()来处理报错，因为我们这里的is_sensitive就是一个bool值，is_err也是返回一个布尔值，正确读取环境变量的时候返回False，读取失败的时候返回True，用<code>！</code>取反之后整好对上我们想实现的逻辑，也就是设置了环境变量的时候，则为True大小写敏感，否则False大小写不敏感。因为我们不需要关注环境变量的值，只想知道有没有。</li>
+</ol>
+<p>写完之后，我们就来运行一下看看吧</p>
+<div class="code-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="code"><pre><span class="line">cargo run to poem.txt</span><br><span class="line">    Finished dev [unoptimized + debuginfo] target(s) in 0.00s</span><br><span class="line">     Running `target\debug\minigrep.exe to poem.txt`</span><br><span class="line">0: Are you nobody, too?</span><br><span class="line"></span><br><span class="line">1: How dreary to be somebody!</span><br><span class="line"></span><br><span class="line">2: To tell your name the livelong day</span><br><span class="line"></span><br><span class="line">3: To an admiring bog!</span><br></pre></td></tr></table></figure></div>
+
+<p>我们在poem.txt里搜索to，结果没有问题，大小写不敏感，搜索出了to和To的结果</p>
+<p>接下来，我们设置一下环境变量，这对于每个系统方法都不一样，这里只说一下windows的方法，在终端里输入以下语句</p>
+<div class="code-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="code"><pre><span class="line">$env:SENSITIVE=1</span><br></pre></td></tr></table></figure></div>
+
+<p>然后再运行代码</p>
+<div class="code-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="code"><pre><span class="line">cargo run to poem.txt  </span><br><span class="line">   Compiling minigrep v0.1.0 (E:\Code\rust\minigrep)</span><br><span class="line">    Finished dev [unoptimized + debuginfo] target(s) in 0.41s</span><br><span class="line">     Running `target\debug\minigrep.exe to poem.txt`</span><br><span class="line">0: Are you nobody, too?</span><br><span class="line"></span><br><span class="line">1: How dreary to be somebody!</span><br></pre></td></tr></table></figure></div>
+
+<p>也没有问题，只搜索出小写的to结果</p>
+<p>现在，这一部分也完成了。</p>
+<h1 id="将错误提示信息打印到标准错误而不是标准输出"><a href="#将错误提示信息打印到标准错误而不是标准输出" class="headerlink" title="将错误提示信息打印到标准错误而不是标准输出"></a>将错误提示信息打印到标准错误而不是标准输出</h1><p>println是输出到标准输出流，也就是打印到屏幕上，另一种输出流是标准错误流，会将正常的输出保存到文件里，错误的输出依旧打印到屏幕上。</p>
+<p>我觉得这部分不重要，就简单放代码了。</p>
+<p>把<code>println</code>改成<code>eprintln</code>即可输出到标准错误</p>
+<div class="code-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="code"><pre><span class="line">use std::env;</span><br><span class="line">use std::process;</span><br><span class="line"></span><br><span class="line">use minigrep::Config;</span><br><span class="line"></span><br><span class="line">fn main() &#123;</span><br><span class="line">    let args: Vec&lt;String&gt; = env::args().collect();</span><br><span class="line">    </span><br><span class="line">    let config = Config::new(&amp;args).unwrap_or_else(|err|&#123;</span><br><span class="line">        eprintln!(&quot;Problem parsing arguments: &#123;&#125;&quot;, err);</span><br><span class="line">        process::exit(1);</span><br><span class="line">    &#125;);</span><br><span class="line"></span><br><span class="line">    if let Err(e) = minigrep::run(config)&#123;</span><br><span class="line">        eprintln!(&quot;Application error: &#123;&#125;&quot;, e);</span><br><span class="line">        process::exit(1);</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
+
+<p>运行错误指令，并指定输出文件，查看输出</p>
+<div class="code-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="code"><pre><span class="line">cargo run &gt; output.txt</span><br><span class="line">    Finished dev [unoptimized + debuginfo] target(s) in 0.00s</span><br><span class="line">     Running `target\debug\minigrep.exe`</span><br><span class="line">Problem parsing arguments: Not enough arguments</span><br><span class="line">error: process didn&#x27;t exit successfully: `target\debug\minigrep.exe` (exit code: 1)</span><br></pre></td></tr></table></figure></div>
+
+<p>可以看见错误信息打印到了屏幕上，而output.txt没有内容</p>
+<p>运行正确指令，查看输出</p>
+<div class="code-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="code"><pre><span class="line">cargo run to poem.txt &gt; output.txt</span><br><span class="line">    Finished dev [unoptimized + debuginfo] target(s) in 0.00s</span><br><span class="line">     Running `target\debug\minigrep.exe to poem.txt</span><br></pre></td></tr></table></figure></div>
+
+<p>可以发现终端没有任何内容输出，输出搜索结果都在output.txt里</p>
+<h1 id="总结"><a href="#总结" class="headerlink" title="总结"></a>总结</h1><p>这章主要还是复习以前的内容吧，大概就是</p>
+<ol>
+<li>结合基本的概念，如所有权，生命周期等编写基本逻辑</li>
+<li>如何使用函数，结构体，模块等功能结构化管理程序逻辑</li>
+<li>如何捕获并正确的处理程序错误</li>
+<li>如何编写测试模块</li>
+<li>一些乱七八糟的命令行处理等</li>
+</ol>
+]]></content>
+      <categories>
+        <category>编程/语言</category>
+      </categories>
+      <tags>
+        <tag>Rust</tag>
+      </tags>
+  </entry>
+  <entry>
     <title>【Rust 学习记录】11. 编写自动化测试</title>
     <url>/2023/05/09/%E3%80%90Rust-%E5%AD%A6%E4%B9%A0%E8%AE%B0%E5%BD%95%E3%80%9111-%E7%BC%96%E5%86%99%E8%87%AA%E5%8A%A8%E5%8C%96%E6%B5%8B%E8%AF%95/</url>
     <content><![CDATA[<blockquote>
@@ -538,238 +770,6 @@
       </tags>
   </entry>
   <entry>
-    <title>【Rust 学习记录】12. 编写一个命令行程序</title>
-    <url>/2023/05/12/%E3%80%90Rust-%E5%AD%A6%E4%B9%A0%E8%AE%B0%E5%BD%95%E3%80%9112-%E7%BC%96%E5%86%99%E4%B8%80%E4%B8%AA%E5%91%BD%E4%BB%A4%E8%A1%8C%E7%A8%8B%E5%BA%8F/</url>
-    <content><![CDATA[<blockquote>
-<p>本章节我们将开始学习编写一个小项目——开发一个能够和文件系统交互并处理命令行输入、输出的工具</p>
-</blockquote>
-<h1 id="基本功能实现"><a href="#基本功能实现" class="headerlink" title="基本功能实现"></a>基本功能实现</h1><p>首先自然是新建一个项目，名为<em>minigrep</em></p>
-<div class="code-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="code"><pre><span class="line">cargo new minigrep</span><br></pre></td></tr></table></figure></div>
-
-<p>实现这一个工具的首要任务自然是接收命令行的参数，例如我们要实现在一个文件里搜索字符串，就得在运行时接收两个参数，一个待搜索的字符串，一个搜索的文件名，例如</p>
-<div class="code-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="code"><pre><span class="line">cargo run string filename.txt</span><br></pre></td></tr></table></figure></div>
-
-<p>这种基础的功能自然是已经有一些现成的crate可以使用来实现这些功能的了，不过因为我们的主要目的是学习，所以接下来我们会从零开始实现这些功能。</p>
-<h2 id="读取参数值"><a href="#读取参数值" class="headerlink" title="读取参数值"></a>读取参数值</h2><p>这一部分我们需要用到标准库里的<code>std::env::args</code>函数，这个函数会返回一个命令行参数的迭代器，使得程序可以读取所有传递给它的命令行参数值，放到一个动态数组里。</p>
-<p>用例：</p>
-<div class="code-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="code"><pre><span class="line">use std::env;</span><br><span class="line"></span><br><span class="line">fn main() &#123;</span><br><span class="line">    let args: Vec&lt;String&gt; = env::args().collect();</span><br><span class="line">    println!(&quot;&#123;:?&#125;&quot;, args);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
-
-<p>这段代码简单来说就是通过<code>env::args()</code>读取命令行参数的迭代器，再通过<code>collect()</code>函数自动遍历迭代器把参数收集到一个动态数组里并返回。</p>
-<p>接下来我们用终端运行代码，传入参数试试</p>
-<div class="code-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="code"><pre><span class="line">cargo run hahha arg   </span><br><span class="line">   Compiling minigrep v0.1.0 (E:\Code\rust\minigrep)</span><br><span class="line">    Finished dev [unoptimized + debuginfo] target(s) in 1.81s</span><br><span class="line">     Running `target\debug\minigrep.exe hahha arg`</span><br><span class="line">[&quot;target\\debug\\minigrep.exe&quot;, &quot;hahha&quot;, &quot;arg&quot;]</span><br></pre></td></tr></table></figure></div>
-
-<p>这里的输出的第一个参数是当前运行的程序的二进制文件入口路径，这一功能主要方便程序员打印程序名称&#x2F;路径，后续才是我们传入的参数字符串，一般情况下我们忽略第一个参数只处理后面两个即可。</p>
-<div class="code-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="code"><pre><span class="line">use std::env;</span><br><span class="line"></span><br><span class="line">fn main() &#123;</span><br><span class="line">    let args: Vec&lt;String&gt; = env::args().collect();</span><br><span class="line">    println!(&quot;&#123;:?&#125;&quot;, args);</span><br><span class="line">    </span><br><span class="line">    let query = &amp;args[1];</span><br><span class="line">    let filename = &amp;args[2];</span><br><span class="line"></span><br><span class="line">    println!(&quot;Searching for &#123;&#125;&quot;, query);</span><br><span class="line">    println!(&quot;In file &#123;&#125;&quot;, filename);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
-
-<p>接下来我们再运行以下这段代码，输出一切正常的话，第一步接收命令行参数的任务我们就完成啦！</p>
-<h2 id="读取文件"><a href="#读取文件" class="headerlink" title="读取文件"></a>读取文件</h2><p>既然是要在文件内容里搜索指定字符串，自然要读取文件的内容了。但在这之前我们要先有一个文件，现在我们在项目的<strong>根目录</strong>下，新建一个<code>poem.txt</code>文件，内容就选择书上给的这首诗吧：</p>
-<div class="code-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="code"><pre><span class="line">I&#x27;m nobody! Who are you?</span><br><span class="line">Are you nobody, too?</span><br><span class="line">Then there&#x27;s a pair of us - don&#x27;t tell!</span><br><span class="line">They&#x27;d banish us, you know.</span><br><span class="line"></span><br><span class="line">How dreary to be somebody!</span><br><span class="line">How public, like a frog</span><br><span class="line">To tell your name the livelong day</span><br><span class="line">To an admiring bog!</span><br></pre></td></tr></table></figure></div>
-
-<p>接下来，我们就可以在代码里读取这个文件了，也很简单，用之前使用过的<code>fs</code>库即可，代码如下。</p>
-<div class="code-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="code"><pre><span class="line">use std::env;</span><br><span class="line">use std::fs;</span><br><span class="line"></span><br><span class="line">fn main() &#123;</span><br><span class="line">    let args: Vec&lt;String&gt; = env::args().collect();</span><br><span class="line">    println!(&quot;&#123;:?&#125;&quot;, args);</span><br><span class="line">    </span><br><span class="line">    let query = &amp;args[1];</span><br><span class="line">    let filename = &amp;args[2];</span><br><span class="line"></span><br><span class="line">    println!(&quot;Searching for &#123;&#125;&quot;, query);</span><br><span class="line">    println!(&quot;In file &#123;&#125;&quot;, filename);</span><br><span class="line"></span><br><span class="line">    let contents = fs::read_to_string(filename).expect(&quot;Error in reading file&quot;);</span><br><span class="line">    println!(&quot;With text:\n&#123;&#125;&quot;, contents)</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
-
-<p>接下来，再运行以下这段代码，用命令行传递参数的方法传递我们的文件名poem.txt</p>
-<div class="code-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="code"><pre><span class="line">cargo run bog poem.txt       </span><br><span class="line">   Compiling minigrep v0.1.0 (E:\Code\rust\minigrep)</span><br><span class="line">    Finished dev [unoptimized + debuginfo] target(s) in 0.63s</span><br><span class="line">     Running `target\debug\minigrep.exe bog poem.txt`</span><br><span class="line">[&quot;target\\debug\\minigrep.exe&quot;, &quot;bog&quot;, &quot;poem.txt&quot;]</span><br><span class="line">Searching for bog</span><br><span class="line">In file poem.txt</span><br><span class="line">With text:</span><br><span class="line">I&#x27;m nobody! Who are you?</span><br><span class="line">Are you nobody, too?</span><br><span class="line">Then there&#x27;s a pair of us - don&#x27;t tell!</span><br><span class="line">They&#x27;d banish us, you know.</span><br><span class="line"></span><br><span class="line">How dreary to be somebody!</span><br><span class="line">How public, like a frog</span><br><span class="line">To tell your name the livelong day</span><br><span class="line">To an admiring bog!</span><br></pre></td></tr></table></figure></div>
-
-<p>可见，顺利的输出了我们的文件内容，代码没有问题。</p>
-<p>到此为止，我们的基本功能就实现完了。但目前为止，我们现在写的代码都一股脑的堆积在<code>main.rs</code>里，非常简单，但也不具备可扩展性以及可维护性，远远称不上一个”项目”。接下来我们就要用到之前学习的模块化管理的知识，重构一下我们的代码，让它变得更规范化。</p>
-<h1 id="模块化与错误处理"><a href="#模块化与错误处理" class="headerlink" title="模块化与错误处理"></a>模块化与错误处理</h1><h2 id="问题与计划"><a href="#问题与计划" class="headerlink" title="问题与计划"></a>问题与计划</h2><p>接下来我们将针对以下四个问题，来制定计划重构我们的代码：</p>
-<ol>
-<li>功能如果都堆积在main函数里的话，随着我们的功能越来越多，这个文件的代码将会变得越来越复杂，越来越难让人理解，更难去测试，耦合程度很高。所以我们要把函数拆分开来，一个函数负责一个任务</li>
-<li>query和filename是存储程序配置的，contents是用于业务逻辑的，当一个作用域的变量越来越多时，我们就很难准确的追踪每个变量的实际用途；所以我们最好应该把用途相同的变量合并到一个结构体里，方便管理也明确用途。</li>
-<li>错误处理方面处理的不够详细，读取文件失败可能有很多原因，我们应该准确定位到每个原因，抛出相关的提示，给用户提供更有效的排错信息。</li>
-<li>错误管理也应该模块化，例如当用户没有指定运行参数时，底层报错是一个数组越位时，抛出错误”index out of bounds”，这无法帮助用户有效的理解问题本身，我们最好把用于错误处理的代码集中管理，更加方便的处理相关的错误逻辑，也方便为用户打印有意义，便于理解的报错信息。</li>
-</ol>
-<h2 id="二进制项目的组织结构"><a href="#二进制项目的组织结构" class="headerlink" title="二进制项目的组织结构"></a>二进制项目的组织结构</h2><p>Rust社区对于程序的组织结构有一套自己的原则</p>
-<ol>
-<li>程序拆分为main.rs和lib.rs，实际的逻辑放在lib.rs，main.rs只作简单调用</li>
-<li>如果逻辑相对简单，再考虑留在main.rs，保留在main中的代码量应该小到可以一眼看出这段代码的正确性</li>
-</ol>
-<p>也就是，main负责运行，lib负责实际逻辑，同时由上一章自动化测试可知，如果我们把逻辑放到lib.rs也更方便我们编写集成测试的代码。</p>
-<p>所以，我们这个项目的main函数功能大概如下</p>
-<ul>
-<li>处理命令行参数</li>
-<li>程序配置的变量</li>
-<li>调用lib.rs中的run函数</li>
-<li>对run函数进行错误处理</li>
-</ul>
-<p>接下来我们就可以开始按照以上原则重构了</p>
-<h2 id="分离基本功能逻辑"><a href="#分离基本功能逻辑" class="headerlink" title="分离基本功能逻辑"></a>分离基本功能逻辑</h2><h3 id="提取解析参数代码"><a href="#提取解析参数代码" class="headerlink" title="提取解析参数代码"></a>提取解析参数代码</h3><p>首先，我们把解析参数做成一个函数，提供main函数调用，方便后面再把这个功能转移到lib</p>
-<div class="code-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="code"><pre><span class="line">use std::env;</span><br><span class="line">use std::fs;</span><br><span class="line"></span><br><span class="line">fn main() &#123;</span><br><span class="line">    let args: Vec&lt;String&gt; = env::args().collect();</span><br><span class="line">    println!(&quot;&#123;:?&#125;&quot;, args);</span><br><span class="line">    </span><br><span class="line">    let (query, filename) = parse_config(&amp;args);</span><br><span class="line"></span><br><span class="line">    println!(&quot;Searching for &#123;&#125;&quot;, query);</span><br><span class="line">    println!(&quot;In file &#123;&#125;&quot;, filename);</span><br><span class="line"></span><br><span class="line">    let contents = fs::read_to_string(filename).expect(&quot;Error in reading file&quot;);</span><br><span class="line">    println!(&quot;With text:\n&#123;&#125;&quot;, contents)</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">fn parse_config(args: &amp;Vec&lt;String&gt;) -&gt; (&amp;str, &amp;str)&#123;</span><br><span class="line">    let query = &amp;args[1];</span><br><span class="line">    let filename = &amp;args[2];</span><br><span class="line">    (query, filename)</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
-
-<h3 id="组合参数值"><a href="#组合参数值" class="headerlink" title="组合参数值"></a>组合参数值</h3><p>上面的代码我们选择返回一个元组，又把一个元组拆分成两个变量，这还是有点意义不明，不方便使用，所以我们选择把这两个值放到一个结构体里，再用两个明确的变量名存储这两个参数，使得这个函数的返回值更加明确。</p>
-<div class="code-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="code"><pre><span class="line">use std::env;</span><br><span class="line">use std::fs;</span><br><span class="line"></span><br><span class="line">fn main() &#123;</span><br><span class="line">    let args: Vec&lt;String&gt; = env::args().collect();</span><br><span class="line">    println!(&quot;&#123;:?&#125;&quot;, args);</span><br><span class="line">    </span><br><span class="line">    let config = parse_config(&amp;args);</span><br><span class="line"></span><br><span class="line">    println!(&quot;Searching for &#123;&#125;&quot;, config.query);</span><br><span class="line">    println!(&quot;In file &#123;&#125;&quot;, config.filename);</span><br><span class="line"></span><br><span class="line">    let contents = fs::read_to_string(config.filename).expect(&quot;Error in reading file&quot;);</span><br><span class="line">    println!(&quot;With text:\n&#123;&#125;&quot;, contents)</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">struct Config&#123;</span><br><span class="line">    query: String,</span><br><span class="line">    filename: String,</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">fn parse_config(args: &amp;Vec&lt;String&gt;) -&gt; Config&#123;</span><br><span class="line">    let config = Config&#123;</span><br><span class="line">        query: args[1].clone(),</span><br><span class="line">        filename: args[2].clone(),</span><br><span class="line">    &#125;;</span><br><span class="line">    config</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
-
-<p>这里，我们定义了一个<code>Config</code>结构体来存储我们的配置值，同时，秉持着结构体最好还是持有自己变量所有权的理念，这里我们需要把字符串clone一下再存入config变量，这种做法虽然比起直接使用引用多用了一些时间和内存，但也省去写生命周期的麻烦，也增加了代码可读性，毕竟开发效率也是效率，该做的牺牲还得做。</p>
-<p>可见，现在main函数里解析参数，使用参数的逻辑已经非常清晰了。</p>
-<blockquote>
-<p>有人对运行时代价很敏感，就是不喜欢用clone解决所有权问题，这个后面在13章会学习一些其他方法更有效率的处理这种情形。但对于我们现在来说，clone是一点没有问题的，因为我们这里的字符串只有读取程序参数的时候用一次clone，而且还只是两个很短的字符串，这点性能真算不上浪费。</p>
-</blockquote>
-<h3 id="为Config创建一个构造器"><a href="#为Config创建一个构造器" class="headerlink" title="为Config创建一个构造器"></a>为Config创建一个构造器</h3><p>这时候我们再回头看一下，其实<code>parse_config</code>这个函数和我们的<code>Config</code>结构体也是紧密相关的，因为parse_config的目的就是构造一个Config结构体变量，那我们为什么不在Config结构体里写一个构造函数来实现同样的功能，增强这个函数和Config结构体的相关性，更好理解呢</p>
-<div class="code-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="code"><pre><span class="line">use std::env;</span><br><span class="line">use std::fs;</span><br><span class="line"></span><br><span class="line">fn main() &#123;</span><br><span class="line">    let args: Vec&lt;String&gt; = env::args().collect();</span><br><span class="line">    println!(&quot;&#123;:?&#125;&quot;, args);</span><br><span class="line">    </span><br><span class="line">    let config = Config::new(&amp;args);</span><br><span class="line"></span><br><span class="line">    println!(&quot;Searching for &#123;&#125;&quot;, config.query);</span><br><span class="line">    println!(&quot;In file &#123;&#125;&quot;, config.filename);</span><br><span class="line"></span><br><span class="line">    let contents = fs::read_to_string(config.filename).expect(&quot;Error in reading file&quot;);</span><br><span class="line">    println!(&quot;With text:\n&#123;&#125;&quot;, contents)</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">struct Config&#123;</span><br><span class="line">    query: String,</span><br><span class="line">    filename: String,</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">impl Config &#123;</span><br><span class="line">    fn new(args: &amp;Vec&lt;String&gt;) -&gt; Config&#123;</span><br><span class="line">        let query = args[1].clone();</span><br><span class="line">        let filename = args[2].clone();</span><br><span class="line">        Config&#123;query, filename&#125;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
-
-<p>于是我们的代码变成了上面这样，使用<code>Config::new</code>代替了之前的<code>parse_config</code>，并顺利运行。</p>
-<h3 id="分离主体逻辑"><a href="#分离主体逻辑" class="headerlink" title="分离主体逻辑"></a>分离主体逻辑</h3><p>这里我们的项目主体运行逻辑就是打开文件并搜索字符串，目前我们只写了打开文件，就先把这部分拆出来，写到<code>run</code>函数里</p>
-<div class="code-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="code"><pre><span class="line">fn run(config: Config)&#123;</span><br><span class="line">    let contents = fs::read_to_string(config.filename)</span><br><span class="line">        .expect(&quot;Error in reading file&quot;);</span><br><span class="line">    println!(&quot;With text:\n&#123;&#125;&quot;, contents);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
-
-<h2 id="错误处理"><a href="#错误处理" class="headerlink" title="错误处理"></a>错误处理</h2><p>依照计划，现在我们开始修复一下错误处理相关的逻辑</p>
-<h3 id="改进错误提示信息"><a href="#改进错误提示信息" class="headerlink" title="改进错误提示信息"></a>改进错误提示信息</h3><p>首先，第一个能想到的错误就是，用户输入的参数不够，例如没有输入参数时，程序会报错“index out of bounds: the len is 1 but the index is 1”，但这个错误会让用户不知所云，所以我们需要完善一下报错提示：</p>
-<div class="code-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="code"><pre><span class="line">impl Config &#123;</span><br><span class="line">    fn new(args: &amp;Vec&lt;String&gt;) -&gt; Config&#123;</span><br><span class="line">        if args.len() &lt; 3 &#123;</span><br><span class="line">            panic!(&quot;Not enough arguments&quot;);</span><br><span class="line">        &#125;</span><br><span class="line">        let query = args[1].clone();</span><br><span class="line">        let filename = args[2].clone();</span><br><span class="line">        Config&#123;query, filename&#125;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
-
-<p>在参数数量少于3个的时候，我们主动抛出panic，提示参数不够，这时的报错信息就更人性化了。</p>
-<h3 id="返回Result而不是直接Panic"><a href="#返回Result而不是直接Panic" class="headerlink" title="返回Result而不是直接Panic"></a>返回Result而不是直接Panic</h3><p>对于函数里的错误，使用Result作为返回结果，让调用函数的用户决定是否panic的方法会更加友好一点。所以我们再修改一下这个new函数，让它在运行成功时返回一个Config变量，在失败时返回报错信息</p>
-<div class="code-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="code"><pre><span class="line">impl Config &#123;</span><br><span class="line">    fn new(args: &amp;Vec&lt;String&gt;) -&gt; Result&lt;Config, &amp;str&gt;&#123;</span><br><span class="line">        if args.len() &lt; 3 &#123;</span><br><span class="line">            return Err(&quot;Not enough arguments&quot;)</span><br><span class="line">        &#125;</span><br><span class="line">        let query = args[1].clone();</span><br><span class="line">        let filename = args[2].clone();</span><br><span class="line">        Ok(Config&#123;query, filename&#125;)</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
-
-<p>因为修改了返回值，所以我们还需要对应修改一下main函数的逻辑</p>
-<div class="code-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="code"><pre><span class="line">use std::env;</span><br><span class="line">use std::fs;</span><br><span class="line">use std::process;</span><br><span class="line"></span><br><span class="line">fn main() &#123;</span><br><span class="line">    let args: Vec&lt;String&gt; = env::args().collect();</span><br><span class="line">    </span><br><span class="line">    let config = Config::new(&amp;args).unwrap_or_else(|err|&#123;</span><br><span class="line">        println!(&quot;Problem parsing args: &#123;&#125;&quot;, err);</span><br><span class="line">        process::exit(1);</span><br><span class="line">    &#125;);</span><br><span class="line"></span><br><span class="line">    println!(&quot;Searching for &#123;&#125;&quot;, config.query);</span><br><span class="line">    println!(&quot;In file &#123;&#125;&quot;, config.filename);</span><br><span class="line"></span><br><span class="line">    let contents = fs::read_to_string(config.filename).expect(&quot;Error in reading file&quot;);</span><br><span class="line">    println!(&quot;With text:\n&#123;&#125;&quot;, contents)</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
-
-<p>在以上代码里</p>
-<ol>
-<li>我们新use了一个process库用来退出程序</li>
-<li>我们使用了之前没用过的错误处理函数<code>unwrap_or_else</code>，其大致工作内容也很简单，主要就是捕获错误信息，把报错信息传入闭包<code>err</code>中，作为参数传递进下面的花括号（匿名函数）里，运行花括号的代码。如果没有报错，则自动获取Ok里存储的变量返回。大致就是，和<code>unwrap</code>类似，不过多了一个可以执行额外错误处理代码的功能</li>
-</ol>
-<p>现在我们再来跑一个错误的命令，来看看报错提示</p>
-<div class="code-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="code"><pre><span class="line">cargo run             </span><br><span class="line">    Finished dev [unoptimized + debuginfo] target(s) in 0.00s</span><br><span class="line">     Running `target\debug\minigrep.exe`</span><br><span class="line">Problem parsing args: Not enough arguments</span><br><span class="line">error: process didn&#x27;t exit successfully: `target\debug\minigrep.exe` (exit code: 1)</span><br></pre></td></tr></table></figure></div>
-
-<p>完美，提示简短且易懂。</p>
-<p>此外，对于run函数我们也作同样的操作；</p>
-<div class="code-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="code"><pre><span class="line">use std::error::Error;</span><br><span class="line"></span><br><span class="line">fn run(config: Config) -&gt; Result&lt;(), Box&lt;dyn Error&gt;&gt;&#123;</span><br><span class="line">    let contents = fs::read_to_string(config.filename)?;</span><br><span class="line">    println!(&quot;With text:\n&#123;&#125;&quot;, contents);</span><br><span class="line">    Ok(())</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
-
-<p>对于run，我们使用了一种新的处理方式-&gt;问号表达式，之前学过，这可以自动为我们在有错误的时候返回错误，减少代码的编写量；然后我们use了一个新的东西<code>std::error::Error</code>，并且使用了一个叫做<code>Box</code>的trait，指定返回的值是一个<code>Error</code>的trait，同时使用了dyn关键词；这里的主要作用就是，因为问号表达式返回的错误类型不是我们容易知道的，所以使用trait的方法可以方便的，动态的帮我们捕获不同的错误类型并进行返回。最后，因为run函数不需要返回什么值，所以只需要Ok里包含空元组就可以了。</p>
-<p>同样的，最后再修改一下main函数，处理返回的Result即可</p>
-<div class="code-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="code"><pre><span class="line">fn main() &#123;</span><br><span class="line">    let args: Vec&lt;String&gt; = env::args().collect();</span><br><span class="line">    </span><br><span class="line">    let config = Config::new(&amp;args).unwrap_or_else(|err|&#123;</span><br><span class="line">        println!(&quot;Problem parsing args: &#123;&#125;&quot;, err);</span><br><span class="line">        process::exit(1);</span><br><span class="line">    &#125;);</span><br><span class="line"></span><br><span class="line">    println!(&quot;Searching for &#123;&#125;&quot;, config.query);</span><br><span class="line">    println!(&quot;In file &#123;&#125;&quot;, config.filename);</span><br><span class="line"></span><br><span class="line">    if let Err(e) = run(config)&#123;</span><br><span class="line">        println!(&quot;Application error: &#123;&#125;&quot;, e);</span><br><span class="line">        process::exit(1);</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
-
-<p>这里我们也使用了一种新的处理方式，也就是在<a href="https://twosix.page/archives/327">6. 枚举与模式匹配</a>里学到的if let语句，用于匹配枚举类型中的其中一种情况。这里因为我们的run函数必定返回一个空元组，所以我们没必要通过unwrap_or_else提取这个空元组，所以简单对Err这种情况进行处理即可。</p>
-<p>当然，语言是很灵活的，我们也可以选择使用match等语句处理我们的报错。</p>
-<h2 id="把代码分离成独立的包"><a href="#把代码分离成独立的包" class="headerlink" title="把代码分离成独立的包"></a>把代码分离成独立的包</h2><p>代码基本已经分离完成了，现在我们只需要把分离的代码放到lib.rs里即可。</p>
-<div class="code-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="code"><pre><span class="line">use std::fs;</span><br><span class="line">use std::error::Error;</span><br><span class="line"></span><br><span class="line">pub struct Config&#123;</span><br><span class="line">    pub query: String,</span><br><span class="line">    pub filename: String,</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">impl Config &#123;</span><br><span class="line">    pub fn new(args: &amp;Vec&lt;String&gt;) -&gt; Result&lt;Config, &amp;str&gt;&#123;</span><br><span class="line">        if args.len() &lt; 3 &#123;</span><br><span class="line">            return Err(&quot;Not enough arguments&quot;);</span><br><span class="line">        &#125;</span><br><span class="line">        let query = args[1].clone();</span><br><span class="line">        let filename = args[2].clone();</span><br><span class="line">        Ok(Config&#123;query, filename&#125;)</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">pub fn run(config: Config) -&gt; Result&lt;(), Box&lt;dyn Error&gt;&gt;&#123;</span><br><span class="line">    let contents = fs::read_to_string(config.filename)?;</span><br><span class="line">    println!(&quot;With text:\n&#123;&#125;&quot;, contents);</span><br><span class="line">    Ok(())</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
-
-<p>别忘了声明接口为pub，让外部可以调用~以及相关的use语句也要搬过来。</p>
-<p>搬迁完毕，接下来只要到main.rs里把我们的库use进来即可，或者不用use，直接使用顶层包进行绝对路径访问也没问题，详见<a href="https://twosix.page/archives/332">7. 包、单元包和模块</a></p>
-<div class="code-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="code"><pre><span class="line">use std::env;</span><br><span class="line">use std::process;</span><br><span class="line"></span><br><span class="line">use minigrep::Config;</span><br><span class="line"></span><br><span class="line">fn main() &#123;</span><br><span class="line">    let args: Vec&lt;String&gt; = env::args().collect();</span><br><span class="line">    </span><br><span class="line">    let config = Config::new(&amp;args).unwrap_or_else(|err|&#123;</span><br><span class="line">        println!(&quot;Problem parsing args: &#123;&#125;&quot;, err);</span><br><span class="line">        process::exit(1);</span><br><span class="line">    &#125;);</span><br><span class="line"></span><br><span class="line">    println!(&quot;Searching for &#123;&#125;&quot;, config.query);</span><br><span class="line">    println!(&quot;In file &#123;&#125;&quot;, config.filename);</span><br><span class="line"></span><br><span class="line">    if let Err(e) = minigrep::run(config)&#123;</span><br><span class="line">        println!(&quot;Application error: &#123;&#125;&quot;, e);</span><br><span class="line">        process::exit(1);</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
-
-<p>这里的Config就是通过use导入，run函数因为处于顶层，所以使用我们顶层包名minigrep直接调用也很方便（如果你创建项目的时候名字不是minigrep记得改成你的项目名字）</p>
-<p>运行通过！我们的基础功能就基本完成了，后面再把用于测试用的<code>println</code>语句删除就好。</p>
-<p>好了，以上代码基本结合了我们学习的大部分内容了，用模块化的思路设计完基本功能逻辑完成后，接下来就该结合一下我们测试的知识了</p>
-<h1 id="使用测试驱动开发来编写库功能"><a href="#使用测试驱动开发来编写库功能" class="headerlink" title="使用测试驱动开发来编写库功能"></a>使用测试驱动开发来编写库功能</h1><p>软件主要功能是搜索文件里的字符串，那还差一个搜索的功能。本小节就主要讲的是按照测试驱动开发（TDD）的流程来开发搜索的逻辑。大概是以下步骤</p>
-<ol>
-<li>编写一个必然失败的测试，运行测试，确保它一定失败</li>
-<li>编写或修改刚好足够多的代码，让测试通过</li>
-<li>在保证测试通过的前提下，重构代码</li>
-<li>回到步骤1，进行开发</li>
-</ol>
-<p>这只是其中一种开发技术，主要思想是：优先编写测试，再编写能通过测试的代码，有助于开发过程中保持较高的测试覆盖率。</p>
-<p>接下来，我们就开始第一步</p>
-<h2 id="编写一个会失败的测试"><a href="#编写一个会失败的测试" class="headerlink" title="编写一个会失败的测试"></a>编写一个会失败的测试</h2><p><strong>lib.rs</strong></p>
-<div class="code-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="code"><pre><span class="line">mod test&#123;</span><br><span class="line">    use super::*;</span><br><span class="line"></span><br><span class="line">    #[test]</span><br><span class="line">    fn one_result()&#123;</span><br><span class="line">        let query = &quot;duct&quot;;</span><br><span class="line">        let content = &quot;</span><br><span class="line">Rust:</span><br><span class="line">safe, fast, productive.</span><br><span class="line">Pick three.&quot;;</span><br><span class="line">        </span><br><span class="line">        assert_eq!(vec![&quot;safe, fast, productive.&quot;], search(query, content));</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
-
-<p>这里我们编写了一个测试模块，给出了测试用的查询字符串，以及内容字符串，再调用了一下实现搜索的功能函数，断言搜索的结果是一个vec数组；</p>
-<p>现在我们还没实现search功能，所以后面就来实现一下。但因为我们首先要编写一个必然失败的测试，所以我们先来试试写一个函数，必然返回空数组，这样就和断言的结果不同，导致失败。</p>
-<div class="code-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="code"><pre><span class="line">pub fn search&lt;&#x27;a&gt;(query: &amp;str, contents: &amp;&#x27;a str) -&gt; Vec&lt;&amp;&#x27;a str&gt;&#123;</span><br><span class="line">    vec![]</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
-
-<p>这里因为我们选择传入字符串的引用，所以需要使用生命周期，这里返回的值主要存的是contents里的部分内容，所以只需要在contents和返回值里标上生命周期即可，query并不需要</p>
-<p>接下来我们用<code>cargo test</code>运行一下测试吧</p>
-<div class="code-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="code"><pre><span class="line">running 1 test</span><br><span class="line">test test::one_result ... FAILED</span><br><span class="line"></span><br><span class="line">failures:</span><br><span class="line"></span><br><span class="line">---- test::one_result stdout ----</span><br><span class="line">thread &#x27;test::one_result&#x27; panicked at &#x27;assertion failed: `(left == right)`</span><br><span class="line">  left: `[&quot;safe, fast, productive.&quot;]`,</span><br><span class="line"> right: `[]`&#x27;, src\lib.rs:41:9</span><br><span class="line">note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace</span><br><span class="line"></span><br><span class="line"></span><br><span class="line">failures:</span><br><span class="line">    test::one_result</span><br><span class="line"></span><br><span class="line">test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s</span><br></pre></td></tr></table></figure></div>
-
-<p>输出测试失败，左右不相等，一切按我们计划的在走，那接下来就是第二步了，编写或修改代码，让测试通过。</p>
-<h2 id="编写可以通过测试的代码"><a href="#编写可以通过测试的代码" class="headerlink" title="编写可以通过测试的代码"></a>编写可以通过测试的代码</h2><p>接下来我们按照正常的思路实验一下search函数的功能：</p>
-<ol>
-<li>遍历内容的每一行</li>
-<li>搜索行里是否包含搜索的字符串</li>
-<li>如果包含，就把这行添加到列表里；否则忽略</li>
-<li>返回列表</li>
-</ol>
-<div class="code-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="code"><pre><span class="line">pub fn search&lt;&#x27;a&gt;(query: &amp; str, contents: &amp;&#x27;a str) -&gt; Vec&lt;&amp;&#x27;a str&gt;&#123;</span><br><span class="line">    let mut ret = Vec::new();</span><br><span class="line">    for eachline in contents.lines()  &#123;</span><br><span class="line">        if eachline.contains(query)&#123;</span><br><span class="line">            ret.push(eachline);</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">    ret</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
-
-<p>大概解释一下：</p>
-<ol>
-<li>new了一个可变的动态列表<code>ret</code>，用来存返回值</li>
-<li>用for循环遍历contents的每一行，lines()函数可以把字符串分割成若干行，返回一个迭代器</li>
-<li>使用contains函数判断query是否是eachline的子串，如果是，push到ret里</li>
-<li>返回ret</li>
-</ol>
-<p>最后再运行一下测试，不出意外就通过了。</p>
-<h2 id="把search集成到run函数内"><a href="#把search集成到run函数内" class="headerlink" title="把search集成到run函数内"></a>把search集成到run函数内</h2><p>上面已经把所有要写的都写完啦，可以集成功能并试着运行了</p>
-<div class="code-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="code"><pre><span class="line">pub fn run(config: Config) -&gt; Result&lt;(), Box&lt;dyn Error&gt;&gt;&#123;</span><br><span class="line">    let contents = fs::read_to_string(config.filename)?;</span><br><span class="line">    for (i, line) in search(&amp;config.query, &amp;contents).iter().enumerate()&#123;</span><br><span class="line">        println!(&quot;&#123;&#125;: &#123;&#125;\n&quot;, i, line);</span><br><span class="line">    &#125;</span><br><span class="line">    Ok(())</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
-
-<p>也简单解释一下：</p>
-<ol>
-<li>通过for循环遍历所有的搜索结果</li>
-<li>通过.iter().enumerate()让迭代器生成的结果附带上当前的循环次数</li>
-<li>输出搜索的结果</li>
-</ol>
-<p>接下来就通过我们熟悉的命令行参数运行程序吧：<code>cargo run frog poem.txt</code></p>
-<div class="code-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="code"><pre><span class="line">cargo run frog poem.txt</span><br><span class="line">   Compiling minigrep v0.1.0 (E:\Code\rust\minigrep)</span><br><span class="line">    Finished dev [unoptimized + debuginfo] target(s) in 0.26s</span><br><span class="line">     Running `target\debug\minigrep.exe frog poem.txt`</span><br><span class="line">0: How public, like a frog</span><br></pre></td></tr></table></figure></div>
-
-<p>完美。</p>
-<h1 id="处理环境变量"><a href="#处理环境变量" class="headerlink" title="处理环境变量"></a>处理环境变量</h1><p>如果有这么一个参数，例如是否开启不分大小写搜索，那每次用户启动的时候都需要通过命令行来输入一串指令开启就有点太麻烦了。这一部分我们就基于此优化一下我们的代码，主要依赖的就是<strong>环境变量</strong>。</p>
-<p>同样基于TDD的计划流程来编写功能。</p>
-<h2 id="编写一个必然失败的不区分大小写搜索测试"><a href="#编写一个必然失败的不区分大小写搜索测试" class="headerlink" title="编写一个必然失败的不区分大小写搜索测试"></a>编写一个必然失败的不区分大小写搜索测试</h2><p>首先是写测试，就不解释了，主要是实现了两个测试，一个大小写敏感和一个大小写不敏感。</p>
-<div class="code-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="code"><pre><span class="line">#[cfg(test)]</span><br><span class="line">mod test&#123;</span><br><span class="line">    use super::*;</span><br><span class="line"></span><br><span class="line">    #[test]</span><br><span class="line">    fn one_result()&#123;</span><br><span class="line">        let query = &quot;duct&quot;;</span><br><span class="line">        let content = &quot;</span><br><span class="line">Rust:</span><br><span class="line">safe, fast, productive.</span><br><span class="line">Pick three.&quot;;</span><br><span class="line">        </span><br><span class="line">        assert_eq!(vec![&quot;safe, fast, productive.&quot;], search(query, content));</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    #[test]</span><br><span class="line">    fn case_sensitive()&#123;</span><br><span class="line">        let query = &quot;duct&quot;;</span><br><span class="line">        let content = &quot;</span><br><span class="line">Rust:</span><br><span class="line">safe, fast, productive.</span><br><span class="line">Pick three.</span><br><span class="line">Duct tape.&quot;;</span><br><span class="line"></span><br><span class="line">        assert_eq!(vec![&quot;safe, fast, productive.&quot;], search(query, content));</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    #[test]</span><br><span class="line">    fn case_insensitive()&#123;</span><br><span class="line">        let query = &quot;rUst&quot;;</span><br><span class="line">        let content = &quot;</span><br><span class="line">Rust:</span><br><span class="line">safe, fast, productive.</span><br><span class="line">Pick three.</span><br><span class="line">Trust me.&quot;;</span><br><span class="line">        assert_eq!(vec![&quot;Rust:&quot;, &quot;Trust me.&quot;], search_case_insensitive(query, content));</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
-
-<p>这里省略掉实现search_case_insensitive返回空数组，导致测试失败的部分。可以自己试试，观察是否确保测试失败。</p>
-<h2 id="编写能通过测试的代码"><a href="#编写能通过测试的代码" class="headerlink" title="编写能通过测试的代码"></a>编写能通过测试的代码</h2><p>然后是实现大小写不敏感的搜索功能函数，所谓大小写不敏感，其实就是把所有字母转成小写&#x2F;大小再来作比较。</p>
-<div class="code-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="code"><pre><span class="line">pub fn search_case_insensitive&lt;&#x27;a&gt;(query: &amp;str, contents: &amp;&#x27;a str) -&gt; Vec&lt;&amp;&#x27;a str&gt;&#123;</span><br><span class="line">    let mut ret = Vec::new();</span><br><span class="line">    let query = query.to_lowercase();</span><br><span class="line">    for eachline in contents.lines()  &#123;</span><br><span class="line">        if eachline.to_lowercase().contains(&amp;query)&#123;</span><br><span class="line">            ret.push(eachline);</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">    ret</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
-
-<p>以上代码需要注意的是：因为<code>to_lowercase</code>函数把字符串原来的数据更改了，所以会创建一个新的字符串存储新的数据，所以这里我们的query变成了拥有自己所有权的String变量，而不再是原来的字符串切片，所以后续传入contains时又使用了&amp;来借用。</p>
-<p>运行测试通过的话，就没有问题了。</p>
-<h2 id="把功能搬迁到run函数内"><a href="#把功能搬迁到run函数内" class="headerlink" title="把功能搬迁到run函数内"></a>把功能搬迁到run函数内</h2><p>因为用户自行决定是否开启大小写敏感的功能，所以要新增一个配置项来存储这个结果，所以我们修改一个Config结构</p>
-<div class="code-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="code"><pre><span class="line">pub struct Config&#123;</span><br><span class="line">    pub query: String,</span><br><span class="line">    pub filename: String,</span><br><span class="line">    pub is_sensitive: bool,</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
-
-<p>接下来，再结合is_sensitive把search_case_insensitive的功能搬到run函数里就差不多了</p>
-<div class="code-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="code"><pre><span class="line">pub fn run(config: Config) -&gt; Result&lt;(), Box&lt;dyn Error&gt;&gt;&#123;</span><br><span class="line">    let contents = fs::read_to_string(config.filename)?;</span><br><span class="line">    let result = if config.is_sensitive&#123;</span><br><span class="line">        search(&amp;config.query, &amp;contents)</span><br><span class="line">    &#125;</span><br><span class="line">    else&#123;</span><br><span class="line">        search_case_insensitive(&amp;config.query, &amp;contents)</span><br><span class="line">    &#125;;</span><br><span class="line">    for (i, line) in result.iter().enumerate()&#123;</span><br><span class="line">        println!(&quot;&#123;&#125;: &#123;&#125;\n&quot;, i, line);</span><br><span class="line">    &#125;</span><br><span class="line">    Ok(())</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
-
-<p>不过这段代码还不能编译通过，因为我们还没修改Config的new函数。这里因为我们不希望通过之前的命令行参数解析的方法来得到is_sensitive的值，所以我们要使用新的方法——读取环境变量。</p>
-<p>环境变量可以让一个参数的值再整个会话内都有效，就不需要每次运行都输入一遍了，很方便。</p>
-<div class="code-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="code"><pre><span class="line">impl Config &#123;</span><br><span class="line">    pub fn new(args: &amp;Vec&lt;String&gt;) -&gt; Result&lt;Config, &amp;str&gt;&#123;</span><br><span class="line">        if args.len() &lt; 3 &#123;</span><br><span class="line">            return Err(&quot;Not enough arguments&quot;);</span><br><span class="line">        &#125;</span><br><span class="line">        let query = args[1].clone();</span><br><span class="line">        let filename = args[2].clone();</span><br><span class="line">        let is_sensitive = !(env::var(&quot;SENSITIVE&quot;).is_err());</span><br><span class="line">        Ok(Config&#123;query, filename, is_sensitive&#125;)</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
-
-<ol>
-<li>我们新use了env，用来读取环境变量</li>
-<li>添加了新的一行，通过env的var函数，读取名为“SENSITIVE”的环境变量</li>
-<li>用Result的is_err()来处理报错，因为我们这里的is_sensitive就是一个bool值，is_err也是返回一个布尔值，正确读取环境变量的时候返回False，读取失败的时候返回True，用<code>！</code>取反之后整好对上我们想实现的逻辑，也就是设置了环境变量的时候，则为True大小写敏感，否则False大小写不敏感。因为我们不需要关注环境变量的值，只想知道有没有。</li>
-</ol>
-<p>写完之后，我们就来运行一下看看吧</p>
-<div class="code-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="code"><pre><span class="line">cargo run to poem.txt</span><br><span class="line">    Finished dev [unoptimized + debuginfo] target(s) in 0.00s</span><br><span class="line">     Running `target\debug\minigrep.exe to poem.txt`</span><br><span class="line">0: Are you nobody, too?</span><br><span class="line"></span><br><span class="line">1: How dreary to be somebody!</span><br><span class="line"></span><br><span class="line">2: To tell your name the livelong day</span><br><span class="line"></span><br><span class="line">3: To an admiring bog!</span><br></pre></td></tr></table></figure></div>
-
-<p>我们在poem.txt里搜索to，结果没有问题，大小写不敏感，搜索出了to和To的结果</p>
-<p>接下来，我们设置一下环境变量，这对于每个系统方法都不一样，这里只说一下windows的方法，在终端里输入以下语句</p>
-<div class="code-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="code"><pre><span class="line">$env:SENSITIVE=1</span><br></pre></td></tr></table></figure></div>
-
-<p>然后再运行代码</p>
-<div class="code-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="code"><pre><span class="line">cargo run to poem.txt  </span><br><span class="line">   Compiling minigrep v0.1.0 (E:\Code\rust\minigrep)</span><br><span class="line">    Finished dev [unoptimized + debuginfo] target(s) in 0.41s</span><br><span class="line">     Running `target\debug\minigrep.exe to poem.txt`</span><br><span class="line">0: Are you nobody, too?</span><br><span class="line"></span><br><span class="line">1: How dreary to be somebody!</span><br></pre></td></tr></table></figure></div>
-
-<p>也没有问题，只搜索出小写的to结果</p>
-<p>现在，这一部分也完成了。</p>
-<h1 id="将错误提示信息打印到标准错误而不是标准输出"><a href="#将错误提示信息打印到标准错误而不是标准输出" class="headerlink" title="将错误提示信息打印到标准错误而不是标准输出"></a>将错误提示信息打印到标准错误而不是标准输出</h1><p>println是输出到标准输出流，也就是打印到屏幕上，另一种输出流是标准错误流，会将正常的输出保存到文件里，错误的输出依旧打印到屏幕上。</p>
-<p>我觉得这部分不重要，就简单放代码了。</p>
-<p>把<code>println</code>改成<code>eprintln</code>即可输出到标准错误</p>
-<div class="code-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="code"><pre><span class="line">use std::env;</span><br><span class="line">use std::process;</span><br><span class="line"></span><br><span class="line">use minigrep::Config;</span><br><span class="line"></span><br><span class="line">fn main() &#123;</span><br><span class="line">    let args: Vec&lt;String&gt; = env::args().collect();</span><br><span class="line">    </span><br><span class="line">    let config = Config::new(&amp;args).unwrap_or_else(|err|&#123;</span><br><span class="line">        eprintln!(&quot;Problem parsing arguments: &#123;&#125;&quot;, err);</span><br><span class="line">        process::exit(1);</span><br><span class="line">    &#125;);</span><br><span class="line"></span><br><span class="line">    if let Err(e) = minigrep::run(config)&#123;</span><br><span class="line">        eprintln!(&quot;Application error: &#123;&#125;&quot;, e);</span><br><span class="line">        process::exit(1);</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
-
-<p>运行错误指令，并指定输出文件，查看输出</p>
-<div class="code-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="code"><pre><span class="line">cargo run &gt; output.txt</span><br><span class="line">    Finished dev [unoptimized + debuginfo] target(s) in 0.00s</span><br><span class="line">     Running `target\debug\minigrep.exe`</span><br><span class="line">Problem parsing arguments: Not enough arguments</span><br><span class="line">error: process didn&#x27;t exit successfully: `target\debug\minigrep.exe` (exit code: 1)</span><br></pre></td></tr></table></figure></div>
-
-<p>可以看见错误信息打印到了屏幕上，而output.txt没有内容</p>
-<p>运行正确指令，查看输出</p>
-<div class="code-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="code"><pre><span class="line">cargo run to poem.txt &gt; output.txt</span><br><span class="line">    Finished dev [unoptimized + debuginfo] target(s) in 0.00s</span><br><span class="line">     Running `target\debug\minigrep.exe to poem.txt</span><br></pre></td></tr></table></figure></div>
-
-<p>可以发现终端没有任何内容输出，输出搜索结果都在output.txt里</p>
-<h1 id="总结"><a href="#总结" class="headerlink" title="总结"></a>总结</h1><p>这章主要还是复习以前的内容吧，大概就是</p>
-<ol>
-<li>结合基本的概念，如所有权，生命周期等编写基本逻辑</li>
-<li>如何使用函数，结构体，模块等功能结构化管理程序逻辑</li>
-<li>如何捕获并正确的处理程序错误</li>
-<li>如何编写测试模块</li>
-<li>一些乱七八糟的命令行处理等</li>
-</ol>
-]]></content>
-      <categories>
-        <category>编程/语言</category>
-      </categories>
-      <tags>
-        <tag>Rust</tag>
-      </tags>
-  </entry>
-  <entry>
     <title>【Rust 学习记录】14. 进一步认识Cargo及crates.io</title>
     <url>/2024/01/23/%E3%80%90Rust-%E5%AD%A6%E4%B9%A0%E8%AE%B0%E5%BD%95%E3%80%9114-%E8%BF%9B%E4%B8%80%E6%AD%A5%E8%AE%A4%E8%AF%86Cargo%E5%8F%8Acrates-io/</url>
     <content><![CDATA[<p>这一章就主要讲讲Cargo这个工具的一些用途，主要是以下几个部分，没有涉猎到的可以在<a class="link"   href="https://doc.rust-lang.org/cargo/" >官网<i class="fa-solid fa-arrow-up-right ml-[0.2em] font-light align-text-top text-[0.7em] link-icon"></i></a>查看cargo更全面的介绍：</p>
@@ -914,91 +914,6 @@
       </tags>
   </entry>
   <entry>
-    <title>【Rust 学习记录】5. 结构体</title>
-    <url>/2023/03/30/%E3%80%90Rust-%E5%AD%A6%E4%B9%A0%E8%AE%B0%E5%BD%95%E3%80%915-%E7%BB%93%E6%9E%84%E4%BD%93/</url>
-    <content><![CDATA[<h1 id="定义及实例化方式"><a href="#定义及实例化方式" class="headerlink" title="定义及实例化方式"></a>定义及实例化方式</h1><h2 id="定义和创建实例"><a href="#定义和创建实例" class="headerlink" title="定义和创建实例"></a>定义和创建实例</h2><p>定义方法和 C++ 是一模一样了，详见代码</p>
-<div class="code-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="code"><pre><span class="line">struct User&#123;</span><br><span class="line">  username: String,</span><br><span class="line">  email: String,</span><br><span class="line">  sign_in_count: u64,</span><br><span class="line">  active: bool,</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
-
-<p>实例化方法稍显不同，方法和定义差不多，指名道姓的赋值，优势是不用对应顺序，可读性强。访问方法就还是传统的点运算符</p>
-<div class="code-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="code"><pre><span class="line">struct User&#123;</span><br><span class="line">  username: String,</span><br><span class="line">  email: String,</span><br><span class="line">  sign_in_count: u64,</span><br><span class="line">  active: bool,</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">fn main() &#123;</span><br><span class="line">    let user1 = User&#123;</span><br><span class="line">       email: String::from(&quot;test@1.com&quot;),</span><br><span class="line">       username: String::from(&quot;haha&quot;),</span><br><span class="line">       sign_in_count: 1,</span><br><span class="line">       active: true,</span><br><span class="line">    &#125;;</span><br><span class="line">    println!(&quot;user1: &#123;&#125;&quot;, user1.email);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
-
-<p>同理，结构体也有可变与不可变一说，<strong>可变结构体，结构体所有变量可变，不可变结构体，结构体所有变量不可变，Rust 没有让结构体部分变量可变，部分不可变的说法</strong></p>
-<h2 id="一些语法糖"><a href="#一些语法糖" class="headerlink" title="一些语法糖"></a>一些语法糖</h2><h3 id="同名参数对应赋值"><a href="#同名参数对应赋值" class="headerlink" title="同名参数对应赋值"></a>同名参数对应赋值</h3><p>如果每次都要写一个 email: xxxx， username: xxxx 好像有点麻烦是吗？Rust 提供了一个简单的方法，<strong>当变量名和结构体内的字段名完全一样的时候，会对应赋值</strong>（有一说一，这个设计挺有想法的，语法糖+1）</p>
-<p>所以我们可以很轻松的给 User 写一个创建用的函数，这样就可以实现带默认值，轻松的构建结构体实例了</p>
-<div class="code-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="code"><pre><span class="line">struct User&#123;</span><br><span class="line">  username: String,</span><br><span class="line">  email: String,</span><br><span class="line">  sign_in_count: u64,</span><br><span class="line">  active: bool,</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">fn create_user(email: String, username: String) -&gt; User &#123;</span><br><span class="line">  User &#123;</span><br><span class="line">    email,</span><br><span class="line">    username,</span><br><span class="line">    active: true,</span><br><span class="line">    sign_in_count: 1,</span><br><span class="line">  &#125;</span><br><span class="line">  // 不写分号返回 User 变量</span><br><span class="line">&#125;</span><br><span class="line">fn main() &#123;</span><br><span class="line">    let user1 = create_user(String::from(&quot;hah@haha.com&quot;), String::from(&quot;haha&quot;));</span><br><span class="line">    println!(&quot;user1: &#123;&#125;&quot;, user1.email);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
-
-<h3 id="用之前的实例构造现在的实例"><a href="#用之前的实例构造现在的实例" class="headerlink" title="用之前的实例构造现在的实例"></a>用之前的实例构造现在的实例</h3><p>在一些情况下其实结构体内的实例都不需要怎么变动，就像上面的例子里，<code>sign_in_count</code> 和 <code>active</code> 参数都是采用同一个默认值来赋给所有实例的，那有没有一些方法能简化这种情况的代码书写呢？有的。</p>
-<div class="code-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="code"><pre><span class="line">fn main() &#123;</span><br><span class="line">    let user1 = create_user(String::from(&quot;hah@haha.com&quot;), String::from(&quot;haha&quot;));</span><br><span class="line">    let user2 = User &#123;</span><br><span class="line">        email: String::from(&quot;user2@haha.com&quot;),</span><br><span class="line">        username: String::from(&quot;user2&quot;),</span><br><span class="line">        ..user1</span><br><span class="line">    &#125;;</span><br><span class="line">    println!(&quot;user2: &#123;&#125;&quot;, user2.active);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
-
-<p><code>..user1</code> 就代表了剩下的值都和 <code>user1</code> 一样，把 <code>user1</code> 里对应字段的值赋给 <code>user2</code> 即可。（这个感觉不如函数封装性好吧，但可能也看情况）</p>
-<h2 id="元组结构体——没有字段名的结构体"><a href="#元组结构体——没有字段名的结构体" class="headerlink" title="元组结构体——没有字段名的结构体"></a>元组结构体——没有字段名的结构体</h2><p>其实就相当于给元组命个名字，适用于很多不需要给字段命名的情况下，例如颜色的RGB，大家都懂是吧，就用一个三元组命名 <code>Color</code> 就好了。定义方式如下</p>
-<div class="code-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="code"><pre><span class="line">struct Color(i8, i8, i8);</span><br><span class="line"></span><br><span class="line">fn main() &#123;</span><br><span class="line">    let black = Color(0, 0, 0);</span><br><span class="line">    println!(&quot;user2: &#123;&#125;&quot;, black.0);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
-
-<p>值得一提的是，定义成结构体后也是用点运算符访问变量，而不是 [] 运算符了</p>
-<h2 id="空结构体——没有字段的结构体"><a href="#空结构体——没有字段的结构体" class="headerlink" title="空结构体——没有字段的结构体"></a>空结构体——没有字段的结构体</h2><p>当你想创建一个空结构体的时候，也是不会报错的，原理说是和空元组相似，然后在某些方面会有用，后续再介绍。</p>
-<p>我也不太懂，就不多说了，后面再看吧。</p>
-<h1 id="结构体的所有权"><a href="#结构体的所有权" class="headerlink" title="结构体的所有权"></a>结构体的所有权</h1><p>在上面举的这个例子中</p>
-<div class="code-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="code"><pre><span class="line">struct User&#123;</span><br><span class="line">  username: String,</span><br><span class="line">  email: String,</span><br><span class="line">  sign_in_count: u64,</span><br><span class="line">  active: bool,</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">fn main() &#123;</span><br><span class="line">    let user1 = User&#123;</span><br><span class="line">       email: String::from(&quot;test@1.com&quot;),</span><br><span class="line">       username: String::from(&quot;haha&quot;),</span><br><span class="line">       sign_in_count: 1,</span><br><span class="line">       active: true,</span><br><span class="line">    &#125;;</span><br><span class="line">    println!(&quot;user1: &#123;&#125;&quot;, user1.email);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
-
-<p>我们定义的所有字段都是具有值的所有权的，所以结构体实例能具有所有字段数据的所有权，能伴随着自己直到离开作用域，但也有不具有所有权的定义方式</p>
-<div class="code-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="code"><pre><span class="line">struct User&#123;</span><br><span class="line">  username: &amp;str,</span><br><span class="line">  email: &amp;str,</span><br><span class="line">  sign_in_count: u64,</span><br><span class="line">  active: bool,</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">fn main() &#123;</span><br><span class="line">    let user1 = User&#123;</span><br><span class="line">       email: String::from(&quot;test@1.com&quot;),</span><br><span class="line">       username: String::from(&quot;haha&quot;),</span><br><span class="line">       sign_in_count: 1,</span><br><span class="line">       active: true,</span><br><span class="line">    &#125;;</span><br><span class="line">    println!(&quot;user1: &#123;&#125;&quot;, user1.email);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
-
-<p>但这种方式现在是没办法定义通过的，报错提示需要指定生命周期，这个涉及到了生命周期，所以就放到后面介绍了。</p>
-<h1 id="初试trait——为结构体增加更多有用的功能"><a href="#初试trait——为结构体增加更多有用的功能" class="headerlink" title="初试trait——为结构体增加更多有用的功能"></a>初试trait——为结构体增加更多有用的功能</h1><p>说实话我不知道这个trait是什么意思，大概查了一下，是 特性（性状）的意思，用来定义一个类型可能和其他类型共享的功能，或许差不多相当于和 python 里的 <strong>xxx</strong> 差不多吗？但看样子还能自己定义的样子。先不管吧，大概了解一下概念，先学着。</p>
-<h2 id="打印结构体"><a href="#打印结构体" class="headerlink" title="打印结构体"></a>打印结构体</h2><p>用过 python 的应该都知道 python 类有个 <code>__str__</code> 函数，可以定义一个类的字符串格式，方便输出成人类能查看的格式，而不是一串地址，Rust 的结构体也有这个功能—— <code>Display</code>。</p>
-<p>我们可以先跑一下这段代码</p>
-<div class="code-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="code"><pre><span class="line">struct rectangle&#123;</span><br><span class="line">  w: u32,</span><br><span class="line">  h: u32</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">fn main() &#123;</span><br><span class="line">  let rect = rectangle&#123;w: 10, h: 20&#125;;</span><br><span class="line">  println!(&quot;rectangle is &#123;&#125;&quot;, rect);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
-
-<p>可以看到一个报错</p>
-<div class="code-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="code"><pre><span class="line">= help: the trait `std::fmt::Display` is not implemented for `rectangle`</span><br><span class="line">= note: in format strings you may be able to use `&#123;:?&#125;` (or &#123;:#?&#125; for pretty-print) instead</span><br></pre></td></tr></table></figure></div>
-
-<p><code>the trait std::fmt::Display is not implemented for rectangle </code>意思就是这个结构体还没实现 <code>Display</code> 这个方法，也就是说，<code>println!</code> 这个宏在输出的时候，还会调用一下类型的格式化函数，来进行指定的输出，之前我们用的基本类型都是默认实现了 <code>Display</code> 方法的，而这个 <code>rectangle</code> 是我们自己定义的，没有 <code>Display</code> 方法，<code>println!</code> 就不知道怎么格式化了，所以就报错。</p>
-<p>但除了这个还有一个有意思的提示 <code>in format strings you may be able to use &#123;:?&#125; (or &#123;:#?&#125; for pretty-print) instead</code> 。这句话告诉我们，可以用 <code>&#123;:?&#125;&#123;:#?&#125;</code> 来整一个漂亮的输出？啥意思？写一下吧~</p>
-<div class="code-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="code"><pre><span class="line">= help: the trait `Debug` is not implemented for `rectangle`</span><br><span class="line">= note: add `#[derive(Debug)]` to `rectangle` or manually `impl Debug for rectangle`</span><br></pre></td></tr></table></figure></div>
-
-<p>被骗了，还是报错。但我们发现了另一个有意思的 trait—— <code>Debug</code> 。也就是说，Rust 对格式化的方法区分了两种，Debug 是专门面向开发者调试时的输出用格式。我超，什么是现代化语法啊（后仰）。这种特性真能派上不少用途。</p>
-<p>提示里说，要么添加<code> [derive(Debug)]</code> 要么自己实现一个 <code>Debug</code> 我们可以先添加一下这个试试</p>
-<div class="code-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="code"><pre><span class="line">#[derive(Debug)]</span><br><span class="line">struct rectangle&#123;</span><br><span class="line">  w: u32,</span><br><span class="line">  h: u32</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">fn main() &#123;</span><br><span class="line">  let rect = rectangle&#123;w: 10, h: 20&#125;;</span><br><span class="line">  println!(&quot;rectangle is &#123;:?&#125;&quot;, rect);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
-
-<p>添加在函数头，进行一个 <code>Debug</code> 注解就可以了，这次运行就不会报错了。我们来看看输出是怎样的</p>
-<div class="code-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="code"><pre><span class="line">rectangle is rectangle &#123; w: 10, h: 20 &#125;</span><br></pre></td></tr></table></figure></div>
-
-<p>可见 Rust 标准的 <code>Debug</code> 格式化输出就是 结构体名{所有字段名: 对应的值}，嗯，挺不错的，不用自己手动一个一个输出了。我们再来看看之前提示里提到的另一个 <code>&#123;:#?&#125;</code> 吧</p>
-<div class="code-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="code"><pre><span class="line">rectangle is rectangle &#123;</span><br><span class="line">    w: 10,</span><br><span class="line">    h: 20,</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
-
-<p>这个输出会更好看点，有了一定的排版，对于复杂的结构体会更有可读性。</p>
-<p>好，书上的 trait 介绍就到这里结束了（是不是把一开始的 <code>Format</code> 忘了），它说到第 10 章的时候会更详细的介绍 trait 的时候，可以通过像这种对结构体进行 trait 注解的方式提供很多功能，包括自带的，甚至可以自己自定义，确实期待。</p>
-<h1 id="方法"><a href="#方法" class="headerlink" title="方法"></a>方法</h1><p>结构体，或者说类，当然不能少了函数，书上对普通函数和结构体里的函数区分了一下概念，结构体内的函数叫方法，因为方法的定义有局限性，例如参数要有self，只能定义在结构体或trait之类的地方，属于是一个子集吧。我们也严谨点，区分一下吧。</p>
-<h2 id="定义"><a href="#定义" class="headerlink" title="定义"></a>定义</h2><div class="code-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="code"><pre><span class="line">#[derive(Debug)]</span><br><span class="line">struct Rectangle&#123;</span><br><span class="line">  w: u32,</span><br><span class="line">  h: u32</span><br><span class="line">&#125;</span><br><span class="line">impl Rectangle &#123;</span><br><span class="line">    fn area(&amp;self) -&gt; u32 &#123;</span><br><span class="line">       self.w * self.h</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">fn main() &#123;</span><br><span class="line">  let rect = Rectangle&#123;w: 10, h: 20&#125;;</span><br><span class="line">  println!(&quot;rectangle&#x27;s area is &#123;:#?&#125;&quot;, rect.area());</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
-
-<p>（吐槽：这里把 <code>rectangle</code> 的首字母大写了，因为 Rust 的编译器居然会警告我的命名不规范，牛）</p>
-<p>可以看见，方法和函数定义差不多，也是用 <code>fn</code> 来定义，指定哪个函数里的话倒是比较意外，居然不是写在 <code>Rectangle </code>定义的花括号里，而是另开一个 <code>impl Rectangle</code> 再来定义方法。另外，Rust 方法和 Python 也有点相似之处，也是通过 <code>self</code> 来指代当前实例，<code>self</code> 可以用三种方式来定义</p>
-<ol>
-<li><code>&amp;self</code> ：不可变引用，这个是最常见的，我们只要读取数据，什么也不干，所以不需要用到所有权，也最方便</li>
-<li><code>self</code>：获取所有权，应该最不常见，有时方法需要用来转换<code>self</code>类型的话，需要用到所有权，获取所有权后再进行返回；如果不返回的话，所有权在调用完方法就被回收了，实例就销毁了。</li>
-<li><code>&amp;mul self</code>：可变引用，也没什么好说的，就是有时要改变实例内字段的值时会用。</li>
-</ol>
-<p>然后书上介绍了 Rust 为什么没有 <code>-&gt;</code> 运算符的问题，我没太看懂，就简述一下我的理解，具体感兴趣可以自行看书或查阅资料。</p>
-<p>C++在对于一个指针类型的结构体变量里，需要对变量进行一次解引用，也就是 <code>ractangle-&gt;area()= (*rectangle).area()</code> 所以额外定义了一个 <code>-&gt;</code> 运算符写起来方便些。而 Rust 里，self的类型被显式定义了，所以编译器可以自动的根据你定义的 <code>self</code> 类型，去自动推理出 <code>self</code> 是否需要自动引用还是解引用，所以就不需要 <code>-&gt;</code> 运算符了。</p>
-<h2 id="关联函数"><a href="#关联函数" class="headerlink" title="关联函数"></a>关联函数</h2><p>在 <code>impl</code> 块里，除了带 <code>self</code> 的方法之外，Rust 还允许在块里定义不含 <code>self</code> 的函数，这些函数因为和结构体有关联，又不太需要 <code>self</code> 所以称为关联函数。和 Python 的 <code>@staticmethod</code> 差不多吧</p>
-<p>这里用一个定义函数来举例</p>
-<div class="code-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="code"><pre><span class="line">#[derive(Debug)]</span><br><span class="line">struct Rectangle&#123;</span><br><span class="line">  w: u32,</span><br><span class="line">  h: u32</span><br><span class="line">&#125;</span><br><span class="line">impl Rectangle &#123;</span><br><span class="line">    fn area(self) -&gt; u32 &#123;</span><br><span class="line">       self.w * self.h</span><br><span class="line">    &#125;</span><br><span class="line">    fn square(size: u32) -&gt; Rectangle &#123;</span><br><span class="line">       Rectangle &#123; w: size, h: size &#125;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">fn main() &#123;</span><br><span class="line">  let rect = Rectangle&#123;w: 10, h: 20&#125;;</span><br><span class="line">  println!(&quot;rectangle&#x27;s area is &#123;:#?&#125;&quot;, rect.area());</span><br><span class="line">  println!(&quot;rectangle is &#123;:#?&#125;&quot;, Rectangle::square(3));</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
-
-<p>使用也就是指定命名空间调用就可以了。</p>
-<h2 id="多个impl块"><a href="#多个impl块" class="headerlink" title="多个impl块"></a>多个impl块</h2><p>使用多个 impl 块也是合法的，可以编译通过。书上说后面会有应用场景介绍，那就后面再看吧，目前感觉还派不上用场？</p>
-<div class="code-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="code"><pre><span class="line">#[derive(Debug)]</span><br><span class="line">struct Rectangle&#123;</span><br><span class="line">  w: u32,</span><br><span class="line">  h: u32</span><br><span class="line">&#125;</span><br><span class="line">impl Rectangle &#123;</span><br><span class="line">    fn area(self) -&gt; u32 &#123;</span><br><span class="line">       self.w * self.h</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br><span class="line">impl Rectangle &#123;</span><br><span class="line">    fn square(size: u32) -&gt; Rectangle &#123;</span><br><span class="line">       Rectangle&#123;w: size, h: size&#125;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br><span class="line">    </span><br><span class="line"></span><br><span class="line">fn main() &#123;</span><br><span class="line">  let rect = Rectangle&#123;w: 10, h: 20&#125;;</span><br><span class="line">  println!(&quot;rectangle&#x27;s area is &#123;:#?&#125;&quot;, rect.area());</span><br><span class="line">  println!(&quot;rectangle is &#123;:#?&#125;&quot;, Rectangle::square(3));</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
-
-<hr>
-<p>本章到此结束！没什么好总结的，是比较基础的，也很重要的一部分，下一章继续干。</p>
-]]></content>
-      <categories>
-        <category>编程/语言</category>
-      </categories>
-      <tags>
-        <tag>Rust</tag>
-      </tags>
-  </entry>
-  <entry>
     <title>【Rust 学习记录】6. 枚举与模式匹配</title>
     <url>/2023/03/30/%E3%80%90Rust-%E5%AD%A6%E4%B9%A0%E8%AE%B0%E5%BD%95%E3%80%916-%E6%9E%9A%E4%B8%BE%E4%B8%8E%E6%A8%A1%E5%BC%8F%E5%8C%B9%E9%85%8D/</url>
     <content><![CDATA[<h1 id="定义枚举"><a href="#定义枚举" class="headerlink" title="定义枚举"></a>定义枚举</h1><p>例子：IP地址，只有 IPV4, IPV6 两个模式。</p>
@@ -1091,6 +1006,91 @@
 <hr>
 <p>第六章也就搞定了，大致总结一下，这章主要就是讲了一下1. 枚举类型对于结构体的优势所在，2. match对于if-else的优势所在，3. 独特的空值设计理念</p>
 <p>今天就到这里吧，后面还有7，8，9章三章的基础通用编程知识，学完就差不多进入进阶阶段了。</p>
+]]></content>
+      <categories>
+        <category>编程/语言</category>
+      </categories>
+      <tags>
+        <tag>Rust</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>【Rust 学习记录】5. 结构体</title>
+    <url>/2023/03/30/%E3%80%90Rust-%E5%AD%A6%E4%B9%A0%E8%AE%B0%E5%BD%95%E3%80%915-%E7%BB%93%E6%9E%84%E4%BD%93/</url>
+    <content><![CDATA[<h1 id="定义及实例化方式"><a href="#定义及实例化方式" class="headerlink" title="定义及实例化方式"></a>定义及实例化方式</h1><h2 id="定义和创建实例"><a href="#定义和创建实例" class="headerlink" title="定义和创建实例"></a>定义和创建实例</h2><p>定义方法和 C++ 是一模一样了，详见代码</p>
+<div class="code-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="code"><pre><span class="line">struct User&#123;</span><br><span class="line">  username: String,</span><br><span class="line">  email: String,</span><br><span class="line">  sign_in_count: u64,</span><br><span class="line">  active: bool,</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
+
+<p>实例化方法稍显不同，方法和定义差不多，指名道姓的赋值，优势是不用对应顺序，可读性强。访问方法就还是传统的点运算符</p>
+<div class="code-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="code"><pre><span class="line">struct User&#123;</span><br><span class="line">  username: String,</span><br><span class="line">  email: String,</span><br><span class="line">  sign_in_count: u64,</span><br><span class="line">  active: bool,</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">fn main() &#123;</span><br><span class="line">    let user1 = User&#123;</span><br><span class="line">       email: String::from(&quot;test@1.com&quot;),</span><br><span class="line">       username: String::from(&quot;haha&quot;),</span><br><span class="line">       sign_in_count: 1,</span><br><span class="line">       active: true,</span><br><span class="line">    &#125;;</span><br><span class="line">    println!(&quot;user1: &#123;&#125;&quot;, user1.email);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
+
+<p>同理，结构体也有可变与不可变一说，<strong>可变结构体，结构体所有变量可变，不可变结构体，结构体所有变量不可变，Rust 没有让结构体部分变量可变，部分不可变的说法</strong></p>
+<h2 id="一些语法糖"><a href="#一些语法糖" class="headerlink" title="一些语法糖"></a>一些语法糖</h2><h3 id="同名参数对应赋值"><a href="#同名参数对应赋值" class="headerlink" title="同名参数对应赋值"></a>同名参数对应赋值</h3><p>如果每次都要写一个 email: xxxx， username: xxxx 好像有点麻烦是吗？Rust 提供了一个简单的方法，<strong>当变量名和结构体内的字段名完全一样的时候，会对应赋值</strong>（有一说一，这个设计挺有想法的，语法糖+1）</p>
+<p>所以我们可以很轻松的给 User 写一个创建用的函数，这样就可以实现带默认值，轻松的构建结构体实例了</p>
+<div class="code-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="code"><pre><span class="line">struct User&#123;</span><br><span class="line">  username: String,</span><br><span class="line">  email: String,</span><br><span class="line">  sign_in_count: u64,</span><br><span class="line">  active: bool,</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">fn create_user(email: String, username: String) -&gt; User &#123;</span><br><span class="line">  User &#123;</span><br><span class="line">    email,</span><br><span class="line">    username,</span><br><span class="line">    active: true,</span><br><span class="line">    sign_in_count: 1,</span><br><span class="line">  &#125;</span><br><span class="line">  // 不写分号返回 User 变量</span><br><span class="line">&#125;</span><br><span class="line">fn main() &#123;</span><br><span class="line">    let user1 = create_user(String::from(&quot;hah@haha.com&quot;), String::from(&quot;haha&quot;));</span><br><span class="line">    println!(&quot;user1: &#123;&#125;&quot;, user1.email);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
+
+<h3 id="用之前的实例构造现在的实例"><a href="#用之前的实例构造现在的实例" class="headerlink" title="用之前的实例构造现在的实例"></a>用之前的实例构造现在的实例</h3><p>在一些情况下其实结构体内的实例都不需要怎么变动，就像上面的例子里，<code>sign_in_count</code> 和 <code>active</code> 参数都是采用同一个默认值来赋给所有实例的，那有没有一些方法能简化这种情况的代码书写呢？有的。</p>
+<div class="code-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="code"><pre><span class="line">fn main() &#123;</span><br><span class="line">    let user1 = create_user(String::from(&quot;hah@haha.com&quot;), String::from(&quot;haha&quot;));</span><br><span class="line">    let user2 = User &#123;</span><br><span class="line">        email: String::from(&quot;user2@haha.com&quot;),</span><br><span class="line">        username: String::from(&quot;user2&quot;),</span><br><span class="line">        ..user1</span><br><span class="line">    &#125;;</span><br><span class="line">    println!(&quot;user2: &#123;&#125;&quot;, user2.active);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
+
+<p><code>..user1</code> 就代表了剩下的值都和 <code>user1</code> 一样，把 <code>user1</code> 里对应字段的值赋给 <code>user2</code> 即可。（这个感觉不如函数封装性好吧，但可能也看情况）</p>
+<h2 id="元组结构体——没有字段名的结构体"><a href="#元组结构体——没有字段名的结构体" class="headerlink" title="元组结构体——没有字段名的结构体"></a>元组结构体——没有字段名的结构体</h2><p>其实就相当于给元组命个名字，适用于很多不需要给字段命名的情况下，例如颜色的RGB，大家都懂是吧，就用一个三元组命名 <code>Color</code> 就好了。定义方式如下</p>
+<div class="code-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="code"><pre><span class="line">struct Color(i8, i8, i8);</span><br><span class="line"></span><br><span class="line">fn main() &#123;</span><br><span class="line">    let black = Color(0, 0, 0);</span><br><span class="line">    println!(&quot;user2: &#123;&#125;&quot;, black.0);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
+
+<p>值得一提的是，定义成结构体后也是用点运算符访问变量，而不是 [] 运算符了</p>
+<h2 id="空结构体——没有字段的结构体"><a href="#空结构体——没有字段的结构体" class="headerlink" title="空结构体——没有字段的结构体"></a>空结构体——没有字段的结构体</h2><p>当你想创建一个空结构体的时候，也是不会报错的，原理说是和空元组相似，然后在某些方面会有用，后续再介绍。</p>
+<p>我也不太懂，就不多说了，后面再看吧。</p>
+<h1 id="结构体的所有权"><a href="#结构体的所有权" class="headerlink" title="结构体的所有权"></a>结构体的所有权</h1><p>在上面举的这个例子中</p>
+<div class="code-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="code"><pre><span class="line">struct User&#123;</span><br><span class="line">  username: String,</span><br><span class="line">  email: String,</span><br><span class="line">  sign_in_count: u64,</span><br><span class="line">  active: bool,</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">fn main() &#123;</span><br><span class="line">    let user1 = User&#123;</span><br><span class="line">       email: String::from(&quot;test@1.com&quot;),</span><br><span class="line">       username: String::from(&quot;haha&quot;),</span><br><span class="line">       sign_in_count: 1,</span><br><span class="line">       active: true,</span><br><span class="line">    &#125;;</span><br><span class="line">    println!(&quot;user1: &#123;&#125;&quot;, user1.email);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
+
+<p>我们定义的所有字段都是具有值的所有权的，所以结构体实例能具有所有字段数据的所有权，能伴随着自己直到离开作用域，但也有不具有所有权的定义方式</p>
+<div class="code-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="code"><pre><span class="line">struct User&#123;</span><br><span class="line">  username: &amp;str,</span><br><span class="line">  email: &amp;str,</span><br><span class="line">  sign_in_count: u64,</span><br><span class="line">  active: bool,</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">fn main() &#123;</span><br><span class="line">    let user1 = User&#123;</span><br><span class="line">       email: String::from(&quot;test@1.com&quot;),</span><br><span class="line">       username: String::from(&quot;haha&quot;),</span><br><span class="line">       sign_in_count: 1,</span><br><span class="line">       active: true,</span><br><span class="line">    &#125;;</span><br><span class="line">    println!(&quot;user1: &#123;&#125;&quot;, user1.email);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
+
+<p>但这种方式现在是没办法定义通过的，报错提示需要指定生命周期，这个涉及到了生命周期，所以就放到后面介绍了。</p>
+<h1 id="初试trait——为结构体增加更多有用的功能"><a href="#初试trait——为结构体增加更多有用的功能" class="headerlink" title="初试trait——为结构体增加更多有用的功能"></a>初试trait——为结构体增加更多有用的功能</h1><p>说实话我不知道这个trait是什么意思，大概查了一下，是 特性（性状）的意思，用来定义一个类型可能和其他类型共享的功能，或许差不多相当于和 python 里的 <strong>xxx</strong> 差不多吗？但看样子还能自己定义的样子。先不管吧，大概了解一下概念，先学着。</p>
+<h2 id="打印结构体"><a href="#打印结构体" class="headerlink" title="打印结构体"></a>打印结构体</h2><p>用过 python 的应该都知道 python 类有个 <code>__str__</code> 函数，可以定义一个类的字符串格式，方便输出成人类能查看的格式，而不是一串地址，Rust 的结构体也有这个功能—— <code>Display</code>。</p>
+<p>我们可以先跑一下这段代码</p>
+<div class="code-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="code"><pre><span class="line">struct rectangle&#123;</span><br><span class="line">  w: u32,</span><br><span class="line">  h: u32</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">fn main() &#123;</span><br><span class="line">  let rect = rectangle&#123;w: 10, h: 20&#125;;</span><br><span class="line">  println!(&quot;rectangle is &#123;&#125;&quot;, rect);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
+
+<p>可以看到一个报错</p>
+<div class="code-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="code"><pre><span class="line">= help: the trait `std::fmt::Display` is not implemented for `rectangle`</span><br><span class="line">= note: in format strings you may be able to use `&#123;:?&#125;` (or &#123;:#?&#125; for pretty-print) instead</span><br></pre></td></tr></table></figure></div>
+
+<p><code>the trait std::fmt::Display is not implemented for rectangle </code>意思就是这个结构体还没实现 <code>Display</code> 这个方法，也就是说，<code>println!</code> 这个宏在输出的时候，还会调用一下类型的格式化函数，来进行指定的输出，之前我们用的基本类型都是默认实现了 <code>Display</code> 方法的，而这个 <code>rectangle</code> 是我们自己定义的，没有 <code>Display</code> 方法，<code>println!</code> 就不知道怎么格式化了，所以就报错。</p>
+<p>但除了这个还有一个有意思的提示 <code>in format strings you may be able to use &#123;:?&#125; (or &#123;:#?&#125; for pretty-print) instead</code> 。这句话告诉我们，可以用 <code>&#123;:?&#125;&#123;:#?&#125;</code> 来整一个漂亮的输出？啥意思？写一下吧~</p>
+<div class="code-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="code"><pre><span class="line">= help: the trait `Debug` is not implemented for `rectangle`</span><br><span class="line">= note: add `#[derive(Debug)]` to `rectangle` or manually `impl Debug for rectangle`</span><br></pre></td></tr></table></figure></div>
+
+<p>被骗了，还是报错。但我们发现了另一个有意思的 trait—— <code>Debug</code> 。也就是说，Rust 对格式化的方法区分了两种，Debug 是专门面向开发者调试时的输出用格式。我超，什么是现代化语法啊（后仰）。这种特性真能派上不少用途。</p>
+<p>提示里说，要么添加<code> [derive(Debug)]</code> 要么自己实现一个 <code>Debug</code> 我们可以先添加一下这个试试</p>
+<div class="code-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="code"><pre><span class="line">#[derive(Debug)]</span><br><span class="line">struct rectangle&#123;</span><br><span class="line">  w: u32,</span><br><span class="line">  h: u32</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">fn main() &#123;</span><br><span class="line">  let rect = rectangle&#123;w: 10, h: 20&#125;;</span><br><span class="line">  println!(&quot;rectangle is &#123;:?&#125;&quot;, rect);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
+
+<p>添加在函数头，进行一个 <code>Debug</code> 注解就可以了，这次运行就不会报错了。我们来看看输出是怎样的</p>
+<div class="code-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="code"><pre><span class="line">rectangle is rectangle &#123; w: 10, h: 20 &#125;</span><br></pre></td></tr></table></figure></div>
+
+<p>可见 Rust 标准的 <code>Debug</code> 格式化输出就是 结构体名{所有字段名: 对应的值}，嗯，挺不错的，不用自己手动一个一个输出了。我们再来看看之前提示里提到的另一个 <code>&#123;:#?&#125;</code> 吧</p>
+<div class="code-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="code"><pre><span class="line">rectangle is rectangle &#123;</span><br><span class="line">    w: 10,</span><br><span class="line">    h: 20,</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
+
+<p>这个输出会更好看点，有了一定的排版，对于复杂的结构体会更有可读性。</p>
+<p>好，书上的 trait 介绍就到这里结束了（是不是把一开始的 <code>Format</code> 忘了），它说到第 10 章的时候会更详细的介绍 trait 的时候，可以通过像这种对结构体进行 trait 注解的方式提供很多功能，包括自带的，甚至可以自己自定义，确实期待。</p>
+<h1 id="方法"><a href="#方法" class="headerlink" title="方法"></a>方法</h1><p>结构体，或者说类，当然不能少了函数，书上对普通函数和结构体里的函数区分了一下概念，结构体内的函数叫方法，因为方法的定义有局限性，例如参数要有self，只能定义在结构体或trait之类的地方，属于是一个子集吧。我们也严谨点，区分一下吧。</p>
+<h2 id="定义"><a href="#定义" class="headerlink" title="定义"></a>定义</h2><div class="code-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="code"><pre><span class="line">#[derive(Debug)]</span><br><span class="line">struct Rectangle&#123;</span><br><span class="line">  w: u32,</span><br><span class="line">  h: u32</span><br><span class="line">&#125;</span><br><span class="line">impl Rectangle &#123;</span><br><span class="line">    fn area(&amp;self) -&gt; u32 &#123;</span><br><span class="line">       self.w * self.h</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">fn main() &#123;</span><br><span class="line">  let rect = Rectangle&#123;w: 10, h: 20&#125;;</span><br><span class="line">  println!(&quot;rectangle&#x27;s area is &#123;:#?&#125;&quot;, rect.area());</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
+
+<p>（吐槽：这里把 <code>rectangle</code> 的首字母大写了，因为 Rust 的编译器居然会警告我的命名不规范，牛）</p>
+<p>可以看见，方法和函数定义差不多，也是用 <code>fn</code> 来定义，指定哪个函数里的话倒是比较意外，居然不是写在 <code>Rectangle </code>定义的花括号里，而是另开一个 <code>impl Rectangle</code> 再来定义方法。另外，Rust 方法和 Python 也有点相似之处，也是通过 <code>self</code> 来指代当前实例，<code>self</code> 可以用三种方式来定义</p>
+<ol>
+<li><code>&amp;self</code> ：不可变引用，这个是最常见的，我们只要读取数据，什么也不干，所以不需要用到所有权，也最方便</li>
+<li><code>self</code>：获取所有权，应该最不常见，有时方法需要用来转换<code>self</code>类型的话，需要用到所有权，获取所有权后再进行返回；如果不返回的话，所有权在调用完方法就被回收了，实例就销毁了。</li>
+<li><code>&amp;mul self</code>：可变引用，也没什么好说的，就是有时要改变实例内字段的值时会用。</li>
+</ol>
+<p>然后书上介绍了 Rust 为什么没有 <code>-&gt;</code> 运算符的问题，我没太看懂，就简述一下我的理解，具体感兴趣可以自行看书或查阅资料。</p>
+<p>C++在对于一个指针类型的结构体变量里，需要对变量进行一次解引用，也就是 <code>ractangle-&gt;area()= (*rectangle).area()</code> 所以额外定义了一个 <code>-&gt;</code> 运算符写起来方便些。而 Rust 里，self的类型被显式定义了，所以编译器可以自动的根据你定义的 <code>self</code> 类型，去自动推理出 <code>self</code> 是否需要自动引用还是解引用，所以就不需要 <code>-&gt;</code> 运算符了。</p>
+<h2 id="关联函数"><a href="#关联函数" class="headerlink" title="关联函数"></a>关联函数</h2><p>在 <code>impl</code> 块里，除了带 <code>self</code> 的方法之外，Rust 还允许在块里定义不含 <code>self</code> 的函数，这些函数因为和结构体有关联，又不太需要 <code>self</code> 所以称为关联函数。和 Python 的 <code>@staticmethod</code> 差不多吧</p>
+<p>这里用一个定义函数来举例</p>
+<div class="code-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="code"><pre><span class="line">#[derive(Debug)]</span><br><span class="line">struct Rectangle&#123;</span><br><span class="line">  w: u32,</span><br><span class="line">  h: u32</span><br><span class="line">&#125;</span><br><span class="line">impl Rectangle &#123;</span><br><span class="line">    fn area(self) -&gt; u32 &#123;</span><br><span class="line">       self.w * self.h</span><br><span class="line">    &#125;</span><br><span class="line">    fn square(size: u32) -&gt; Rectangle &#123;</span><br><span class="line">       Rectangle &#123; w: size, h: size &#125;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">fn main() &#123;</span><br><span class="line">  let rect = Rectangle&#123;w: 10, h: 20&#125;;</span><br><span class="line">  println!(&quot;rectangle&#x27;s area is &#123;:#?&#125;&quot;, rect.area());</span><br><span class="line">  println!(&quot;rectangle is &#123;:#?&#125;&quot;, Rectangle::square(3));</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
+
+<p>使用也就是指定命名空间调用就可以了。</p>
+<h2 id="多个impl块"><a href="#多个impl块" class="headerlink" title="多个impl块"></a>多个impl块</h2><p>使用多个 impl 块也是合法的，可以编译通过。书上说后面会有应用场景介绍，那就后面再看吧，目前感觉还派不上用场？</p>
+<div class="code-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="code"><pre><span class="line">#[derive(Debug)]</span><br><span class="line">struct Rectangle&#123;</span><br><span class="line">  w: u32,</span><br><span class="line">  h: u32</span><br><span class="line">&#125;</span><br><span class="line">impl Rectangle &#123;</span><br><span class="line">    fn area(self) -&gt; u32 &#123;</span><br><span class="line">       self.w * self.h</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br><span class="line">impl Rectangle &#123;</span><br><span class="line">    fn square(size: u32) -&gt; Rectangle &#123;</span><br><span class="line">       Rectangle&#123;w: size, h: size&#125;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br><span class="line">    </span><br><span class="line"></span><br><span class="line">fn main() &#123;</span><br><span class="line">  let rect = Rectangle&#123;w: 10, h: 20&#125;;</span><br><span class="line">  println!(&quot;rectangle&#x27;s area is &#123;:#?&#125;&quot;, rect.area());</span><br><span class="line">  println!(&quot;rectangle is &#123;:#?&#125;&quot;, Rectangle::square(3));</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
+
+<hr>
+<p>本章到此结束！没什么好总结的，是比较基础的，也很重要的一部分，下一章继续干。</p>
 ]]></content>
       <categories>
         <category>编程/语言</category>
@@ -1379,136 +1379,6 @@
       </tags>
   </entry>
   <entry>
-    <title>【Rust学习记录】1. 开发环境搭建</title>
-    <url>/2023/03/24/%E3%80%90Rust%E5%AD%A6%E4%B9%A0%E8%AE%B0%E5%BD%95%E3%80%911-%E5%BC%80%E5%8F%91%E7%8E%AF%E5%A2%83%E6%90%AD%E5%BB%BA/</url>
-    <content><![CDATA[
-  <div class="note p-4 mb-4 rounded-small info">
-    <p>本系列参考书目：《RUST权威指南》</p>
-
-  </div>
-
-<p>久闻rust大名，趁着研究生还是学习生涯，抽空出来试试这个所谓的既高效，又安全的语言</p>
-<h1 id="环境安装与搭建"><a href="#环境安装与搭建" class="headerlink" title="环境安装与搭建"></a>环境安装与搭建</h1><h2 id="Rust安装"><a href="#Rust安装" class="headerlink" title="Rust安装"></a>Rust安装</h2><p>windows的安装很傻瓜式，只要进入<a class="link"   href="https://www.rust-lang.org/learn/get-started" >官网<i class="fa-solid fa-arrow-up-right ml-[0.2em] font-light align-text-top text-[0.7em] link-icon"></i></a>，下载最新版本的安装包，按照进行安装即可。期间可能会提示让你安装VS的工具，照着安装即可。</p>
-<p>安装完成后，就可以通过 <code>rustc --version</code> 来测试是否安装成功了。</p>
-<p>同时，安装后rust也会在本地生成一份文档，可以通过 <code>rustup doc</code> 用浏览器打开。</p>
-<h1 id="Hello-World"><a href="#Hello-World" class="headerlink" title="Hello World!"></a>Hello World!</h1><p>接下来进行一个开启一门全新语言的必备仪式，hello world!</p>
-<ol>
-<li>新建一个文件命名为 <code>hello.rs</code> rs就是rust代码文件的后缀</li>
-<li>编写代码</li>
-</ol>
-<div class="code-container" data-rel="Cpp"><figure class="iseeu highlight cpp"><table><tr><td class="code"><pre><span class="line"><span class="function">fn <span class="title">main</span><span class="params">()</span></span>&#123;</span><br><span class="line">    println!(<span class="string">&quot;Hello, world!&quot;</span>); </span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
-
-<ol start="3">
-<li>编译程序 <code>rustc hello.rs</code> ，接下来就会看到文件夹内生成了一个可执行文件 hello.exe，执行它，就能看到你的 hello world啦~跨过这一步，我们就是一名rust开发者了</li>
-</ol>
-<p>稍微了解一下这个函数</p>
-<p>首先fn就是function的缩写，用来定义函数；其他语法都和c++差不多，唯独不一样的就是函数println后带着一个感叹号，这似乎是rust里的宏机制，这个后面再学学吧。</p>
-<h1 id="Cargo的安装与使用"><a href="#Cargo的安装与使用" class="headerlink" title="Cargo的安装与使用"></a>Cargo的安装与使用</h1><h2 id="创建项目"><a href="#创建项目" class="headerlink" title="创建项目"></a>创建项目</h2><p>书上写的是，cargo是构建+包管理的工具，或许可以理解成，ubuntu里的apt+cmake的组合？</p>
-<p>在安装rust时就已经同步安装了cargo，我们可以通过 <code>cargo --version</code> 来检查是否正确安装</p>
-<div class="code-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="code"><pre><span class="line">cargo new hello_cargo</span><br></pre></td></tr></table></figure></div>
-
-<p>这一个命令会使用cargo来创建新的项目架构，我们进入创建的hello_cargo文件夹，可以看到cargo帮我们初始化了一个Cargo.toml文件，一个src目录，放置了一个main.rs的源文件，还有一个.gitignore文件，说明它还帮我们配置了git版本管理</p>
-<p>关于toml文件，我们可以用编辑器打开它</p>
-<div class="code-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="code"><pre><span class="line">[package]</span><br><span class="line">name = &quot;hello_cargo&quot;</span><br><span class="line">version = &quot;0.1.0&quot;</span><br><span class="line">edition = &quot;2021&quot;</span><br><span class="line"></span><br><span class="line"># See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html</span><br><span class="line"></span><br><span class="line">[dependencies]</span><br></pre></td></tr></table></figure></div>
-
-<p>我们可以看到这么些东西，上面自然就是你所创建的代码包的相关信息，而dependencies就是我们代码需要依赖的第三方包信息，不过我们一个hello world不需要什么，所以现在这里是空的。</p>
-<p>也就是说，这是个rs项目的标准配置文件</p>
-<p>我们再打开main.rs，就会发现cargo已经帮我们写好了一个hello world程序~</p>
-<h2 id="编译、运行与发布"><a href="#编译、运行与发布" class="headerlink" title="编译、运行与发布"></a>编译、运行与发布</h2><p>之前用rustc来编译单个文件，现在我们来使用cargo构建整个项目，首先回到根目录 hello_cargo，输入命令</p>
-<div class="code-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="code"><pre><span class="line">cargo build</span><br></pre></td></tr></table></figure></div>
-
-<p><img  
-                     lazyload
-                     src="/images/loading.svg"
-                     data-src="/images/Snipaste_2023-03-24_21-59-03.jpg"
-                      alt="img"
-                ></p>
-<p>编译完成如上图，我们就可以发现，目录里生成了一个target文件夹，在<code> ./targe/debug</code> 目录下，就可以找到我们编译成功的可执行文件了，同样运行它，就能看到 hello world了</p>
-<p>PS：如果想要编译+运行，可以使用 <code>cargo run</code> 命令（若源代码未发生改变，cargo run不会重新进行构建，而是直接运行）</p>
-<p>另外，cargo还有一个比较好用的命令 <code>cargo check</code> ，这个命令可以让你在编译大型程序的时候，免去漫长的编译等待，快速的知道代码能否完成编译（真的这么神吗，cmake编译一个小时opencv最后环境出错编译失败的我如此问道）</p>
-<hr>
-<p>如果你已经准备好发布你的程序了，那么就可以用 <code>cargo build --release</code> 来编译代码，它会在 <code>target/release</code> 的目录下生成可执行文件，和debug不同的是，它会花更长的编译时间来优化你的代码，使代码有更好的运行性能。也就是说，普通的build侧重于快速的编译，让你调试程序，release build侧重于可执行文件的运行性能，用来交付给用户。</p>
-<p><img  
-                     lazyload
-                     src="/images/loading.svg"
-                     data-src="/images/Snipaste_2023-03-24_22-09-48.jpg"
-                      alt="img"
-                ></p>
-<p>可以看到编译后有一个optimized的标签，表示是优化过的target，同时也少了debug info。（但编译速度更快了，应该就是我之前debug编译过一次，基于那个的基础上，又花了0.84s进行优化）</p>
-<p>PS：同理，你想编译完直接测试，可以用 <code>cargo run --release</code></p>
-<p>这么看来，cargo应该就是rust构建项目的核心工具了。</p>
-<p>到此为止，第一章结束。</p>
-]]></content>
-      <categories>
-        <category>编程/语言</category>
-      </categories>
-      <tags>
-        <tag>Rust</tag>
-      </tags>
-  </entry>
-  <entry>
-    <title>【Rust学习记录】2. 猜数游戏——尝试代码编写</title>
-    <url>/2023/03/25/%E3%80%90Rust%E5%AD%A6%E4%B9%A0%E8%AE%B0%E5%BD%95%E3%80%912-%E7%8C%9C%E6%95%B0%E6%B8%B8%E6%88%8F%E2%80%94%E2%80%94%E5%B0%9D%E8%AF%95%E4%BB%A3%E7%A0%81%E7%BC%96%E5%86%99/</url>
-    <content><![CDATA[<h1 id="输入与输出的尝试"><a href="#输入与输出的尝试" class="headerlink" title="输入与输出的尝试"></a>输入与输出的尝试</h1><h2 id="创建项目"><a href="#创建项目" class="headerlink" title="创建项目"></a>创建项目</h2><div class="code-container" data-rel="Bash"><figure class="iseeu highlight bash"><table><tr><td class="code"><pre><span class="line">cargo new guess_game</span><br><span class="line"><span class="built_in">cd</span> .\guess_game\</span><br><span class="line">cargo run</span><br></pre></td></tr></table></figure></div>
-
-<p>就是之前介绍的，用 cargo 创建项目的步骤，run 成功了就表明没问题啦</p>
-<div class="code-container" data-rel="Rust"><figure class="iseeu highlight rust"><table><tr><td class="code"><pre><span class="line"><span class="keyword">use</span> std::io;</span><br><span class="line"></span><br><span class="line"><span class="keyword">fn</span> <span class="title function_">main</span>()&#123;</span><br><span class="line">    <span class="built_in">println!</span>(<span class="string">&quot;欢迎来玩猜数游戏！&quot;</span>);</span><br><span class="line">    <span class="built_in">println!</span>(<span class="string">&quot;输入一个数字：&quot;</span>);</span><br><span class="line">    <span class="keyword">let</span> <span class="keyword">mut </span><span class="variable">guess</span> = <span class="type">String</span>::<span class="title function_ invoke__">new</span>();</span><br><span class="line">    io::<span class="title function_ invoke__">stdin</span>().<span class="title function_ invoke__">read_line</span>(&amp;<span class="keyword">mut</span> guess).<span class="title function_ invoke__">expect</span>(<span class="string">&quot;读取输入失败！&quot;</span>);</span><br><span class="line">    <span class="built_in">println!</span>(<span class="string">&quot;你输入的数字是：&#123;&#125;&quot;</span>, guess);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
-
-<ul>
-<li><code>use</code>：就是 Rust 里的导入语句，这里的意思是导入 <code>std</code> 库里的 <code>io</code> 模块。</li>
-<li><code>let</code>：就是 Rust 里的定义语句，<code>let a = b;</code> 就是定义一个新的变量 <code>a</code>，值为 <code>b</code>。但值得一提的是，和其他所有程序都不一样，Rust 里直接定义的变量都是 <code>const</code> 常量，不可变！需要用 <code>mut</code> 关键词声明这个变量是可变的变量。</li>
-<li><code>string::new()</code>：没什么好说的，<code>new</code> 了一个 <code>String</code> 类型，是空白的字符串。</li>
-<li><code>io::stdin().read_line(&amp;mut guess)</code>：也就是调用 <code>io</code> 模块里的 <code>stdin</code> 实例的 <code>read_line</code> 函数，如果没有写 <code>use</code>，也可以用 <code>std::io::stdin</code> 表示，<code>&amp;</code> 和 C++ 里一样，是引用的概念，也就是说，定义了一个新的引用，和上面的 <code>guess</code> 指向同一个地址，用来接输入。</li>
-<li><code>.expect</code> 就是异常处理语句，在执行完 <code>read_line</code> 后，会返回一个 <code>Result</code> 类型的值，通常是一个枚举类型，<code>Ok</code> 和 <code>Err</code> 两个值，<code>Ok</code> 就是执行成功，并且附带代码产生的结果值，这里就是输入的字节数；<code>Err</code> 就是执行错误，附带错误原因。用 <code>expect</code> 就可以很方便地处理异常，而不用再写各 if-else。</li>
-<li>值得一提的是，不写 <code>expect</code> 的话，虽然能编译通过，但 Rust 会提示你有个地方没处理异常，就像这样：</li>
-</ul>
-<p><img  
-                     lazyload
-                     src="/images/loading.svg"
-                     data-src="/images/Snipaste_2023-03-24_23-15-36.jpg"
-                      alt="img"
-                ></p>
-<p>（听说有人不喜欢写异常处理是吧）</p>
-<p>最后一句，就是标准的格式化花括号占位输出，没什么好说的。</p>
-<h1 id="引入第三方包的尝试"><a href="#引入第三方包的尝试" class="headerlink" title="引入第三方包的尝试"></a>引入第三方包的尝试</h1><h2 id="声明依赖"><a href="#声明依赖" class="headerlink" title="声明依赖"></a>声明依赖</h2><p>一般语言的标准库都有生成随机数的函数，但rust没有。所以我们需要引入rust官方提供的一个随机数包——rand</p>
-<p>打开Cargo.toml文件，在dependencies后面添加rand包。</p>
-<div class="code-container" data-rel="Toml"><figure class="iseeu highlight toml"><table><tr><td class="code"><pre><span class="line"><span class="section">[package]</span></span><br><span class="line"><span class="attr">name</span> = <span class="string">&quot;guess_game&quot;</span></span><br><span class="line"><span class="attr">version</span> = <span class="string">&quot;0.1.0&quot;</span></span><br><span class="line"><span class="attr">edition</span> = <span class="string">&quot;2021&quot;</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html</span></span><br><span class="line"></span><br><span class="line"><span class="section">[dependencies]</span></span><br><span class="line"><span class="attr">rand</span> = <span class="string">&quot;0.3.14&quot;</span></span><br></pre></td></tr></table></figure></div>
-
-<p>0.3.14版本就是版本号。</p>
-<p>然后再build一次项目，cargo就会自动帮你搜索包以及对应的并下载了，包的信息一般是从 crates.io 获取</p>
-<h2 id="cargo-lock和cargo-update"><a href="#cargo-lock和cargo-update" class="headerlink" title="cargo.lock和cargo update"></a>cargo.lock和cargo update</h2><p>cargo引入了一个独特的机制来保证依赖的版本问题，让所有人在构建这个项目的时候都得到相同的结果。你第一次构建项目的时候，cargo就会遍历我们声明的依赖以及版本号，把它写到 lock 文件里，后面再构建的时候，就会都使用这个版本的依赖了，除非手动升级到其他版本。</p>
-<p>如果实在想升级，使用 <code>cargo update</code> 命令就会无视 lock 强行升级依赖</p>
-<h1 id="使用match进行分支控制的尝试"><a href="#使用match进行分支控制的尝试" class="headerlink" title="使用match进行分支控制的尝试"></a>使用match进行分支控制的尝试</h1><p>rust提供了match语法来进行更简洁的分支控制。</p>
-<div class="code-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="code"><pre><span class="line">use std::io;</span><br><span class="line">use std::cmp::Ordering;</span><br><span class="line">use rand::Rng;</span><br><span class="line">fn main()&#123;</span><br><span class="line">    println!(&quot;欢迎来玩猜数游戏！&quot;);</span><br><span class="line">    let secret_number = rand::thread_rng().gen_range(1, 101);</span><br><span class="line">    println!(&quot;正确答案是:&#123;&#125;&quot;, secret_number);</span><br><span class="line">    println!(&quot;输入一个数字：&quot;);</span><br><span class="line">    let mut guess = String::new();</span><br><span class="line">    io::stdin().read_line(&amp;mut guess)</span><br><span class="line">        .expect(&quot;读取输入失败！&quot;);</span><br><span class="line">    let guess: i32 = guess.trim().parse()</span><br><span class="line">        .expect(&quot;请输入正确的数字！&quot;);</span><br><span class="line">    match guess.cmp(&amp;secret_number)&#123;</span><br><span class="line">        Ordering::Less =&gt; &#123;</span><br><span class="line">            println!(&quot;猜小啦&quot;);</span><br><span class="line">            println!(&quot;再猜一次：&quot;);</span><br><span class="line">        &#125;,</span><br><span class="line">        Ordering::Greater =&gt; println!(&quot;猜大啦&quot;),</span><br><span class="line">        Ordering::Equal =&gt; println!(&quot;猜对啦&quot;),</span><br><span class="line">        Other =&gt; println!(&quot;猜错啦&quot;),</span><br><span class="line">    &#125;</span><br><span class="line">    println!(&quot;你输入的数字是：&#123;&#125;&quot;, guess);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
-
-<p>这段代码里：</p>
-<ul>
-<li><code>use</code> 了一个 <code>Ordering</code> 的模块，这个模块提供了顺序对应的枚举类型，也就是 <code>Less</code>, <code>Greater</code>, <code>Equal</code></li>
-<li><code>trim().parse()</code> 语句用来作类型转换，因为 <code>gen_range</code> 生成的 <code>secret_number</code> 是 <code>i32</code> 类型，无法直接与输入的字符串进行比较，所以作了一个类型转换；其中 <code>trim()</code> 就是去掉首尾多余的字符，空格换行什么的；<code>parse()</code> 是用于将字符串解析为对应数值类型的方法，同样也会抛出 <code>Result</code> 可以用于异常处理</li>
-<li><code>match guess.cmp</code>：就是通过 <code>match</code> 语法进行分支控制，把 <code>guess.cmp()</code> 的结果丢到下面去匹配，匹配到什么就执行什么的语句。其中 <code>cmp</code> 返回的就是 <code>Ordering</code> 这个枚举类型。实际中，这个枚举类型也可以自己定义，方便自己的分支控制。传统的 <code>if-else</code> 也能实现这个逻辑就是。</li>
-</ul>
-<p>PS：大概了解了一下 <code>if-else</code> 和 <code>match</code> 的比较，两者应该主要是在可读性上的区别比较明显。</p>
-<p>在可读性上，<code>if-else</code> 只接受 bool 值的二类判断。当有复杂条件的时候，就需要多层嵌套 <code>if-else</code> 比较难看。相对的，<code>match</code> 可以自定义枚举类型，在多类判断的时候，写法也更简洁，可读性更佳。当然，二类判断当属 <code>if-else</code>。</p>
-<p>在性能上，当匹配的模式非常多的情况下，<code>match</code> 可以在编译时就完成判断，而 <code>if-else</code> 是在运行的时候完成判断，在极端的情况下，<code>match</code> 的性能会更佳（但我觉得在这种语句上纠性能的意义并不大）。</p>
-<p>另外了解了一下，<code>if-else</code> 的语法和 C++ 基本一样，就不另外写了，书上目前也没有介绍 <code>if-else</code>。</p>
-<h1 id="循环的尝试"><a href="#循环的尝试" class="headerlink" title="循环的尝试"></a>循环的尝试</h1><div class="code-container" data-rel="Rust"><figure class="iseeu highlight rust"><table><tr><td class="code"><pre><span class="line"><span class="keyword">use</span> std::io;</span><br><span class="line"><span class="keyword">use</span> std::cmp::Ordering;</span><br><span class="line"><span class="keyword">use</span> rand::Rng;</span><br><span class="line"><span class="keyword">fn</span> <span class="title function_">main</span>()&#123;</span><br><span class="line">    <span class="built_in">println!</span>(<span class="string">&quot;欢迎来玩猜数游戏！&quot;</span>);</span><br><span class="line">    <span class="keyword">let</span> <span class="variable">secret_number</span> = rand::<span class="title function_ invoke__">thread_rng</span>().<span class="title function_ invoke__">gen_range</span>(<span class="number">1</span>, <span class="number">101</span>);</span><br><span class="line">    <span class="built_in">println!</span>(<span class="string">&quot;正确答案是:&#123;&#125;&quot;</span>, secret_number);</span><br><span class="line">    <span class="keyword">loop</span>&#123;</span><br><span class="line">        <span class="built_in">println!</span>(<span class="string">&quot;输入一个数字：&quot;</span>);</span><br><span class="line">        <span class="keyword">let</span> <span class="keyword">mut </span><span class="variable">guess</span> = <span class="type">String</span>::<span class="title function_ invoke__">new</span>();</span><br><span class="line">        io::<span class="title function_ invoke__">stdin</span>().<span class="title function_ invoke__">read_line</span>(&amp;<span class="keyword">mut</span> guess)</span><br><span class="line">        .<span class="title function_ invoke__">expect</span>(<span class="string">&quot;读取输入失败！&quot;</span>);</span><br><span class="line">        <span class="built_in">println!</span>(<span class="string">&quot;你输入的数字是：&#123;&#125;&quot;</span>, guess);</span><br><span class="line">        <span class="keyword">let</span> <span class="variable">guess</span>: <span class="type">i32</span> = guess.<span class="title function_ invoke__">trim</span>().<span class="title function_ invoke__">parse</span>()</span><br><span class="line">            .<span class="title function_ invoke__">expect</span>(<span class="string">&quot;请输入正确的数字！&quot;</span>);</span><br><span class="line">        <span class="keyword">match</span> guess.<span class="title function_ invoke__">cmp</span>(&amp;secret_number)&#123;</span><br><span class="line">            Ordering::Less =&gt; &#123;</span><br><span class="line">                <span class="built_in">println!</span>(<span class="string">&quot;猜小啦&quot;</span>);</span><br><span class="line">                <span class="built_in">println!</span>(<span class="string">&quot;再猜一次：&quot;</span>);</span><br><span class="line">            &#125;,</span><br><span class="line">            Ordering::Greater =&gt; &#123;</span><br><span class="line">                <span class="built_in">println!</span>(<span class="string">&quot;猜大啦&quot;</span>);</span><br><span class="line">                <span class="built_in">println!</span>(<span class="string">&quot;再猜一次：&quot;</span>);</span><br><span class="line">            &#125;,</span><br><span class="line">            Ordering::Equal =&gt; &#123;</span><br><span class="line">                <span class="built_in">println!</span>(<span class="string">&quot;猜对啦&quot;</span>);</span><br><span class="line">                <span class="keyword">break</span>;</span><br><span class="line">            &#125;</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
-
-<p>想使用一个 <code>while True</code> 循环也很简单，在 Rust 里就是一个 <code>loop</code> 语法，外带 <code>break</code>，没什么多说的，这里注意定义 <code>guess</code> 变量要在 <code>loop</code> 里，不然 <code>read_line</code> 会不断的在 <code>guess</code> 后面添加字符，就会导致无法转换成数字，报错退出。</p>
-<p>那么在循环里有一个问题就很明显了，那就是 <code>expect</code> 语句不是我所理解常规的 <code>try-catch</code> 异常处理语句，它并没有捕获+后处理的步骤，所以它是会导致程序报错退出的。</p>
-<p>那怎么来进行异常处理呢？之前也说过，<code>Result</code> 返回的是一个枚举类型 <code>Ok</code> 和 <code>Err</code>。那不就是，用 <code>match</code> 来处理就完了嘛？~</p>
-<div class="code-container" data-rel="Rust"><figure class="iseeu highlight rust"><table><tr><td class="code"><pre><span class="line"><span class="keyword">use</span> std::io;</span><br><span class="line"><span class="keyword">use</span> std::cmp::Ordering;</span><br><span class="line"><span class="keyword">use</span> rand::Rng;</span><br><span class="line"><span class="keyword">fn</span> <span class="title function_">main</span>()&#123;</span><br><span class="line">    <span class="built_in">println!</span>(<span class="string">&quot;欢迎来玩猜数游戏！&quot;</span>);</span><br><span class="line">    <span class="keyword">let</span> <span class="variable">secret_number</span> = rand::<span class="title function_ invoke__">thread_rng</span>().<span class="title function_ invoke__">gen_range</span>(<span class="number">1</span>, <span class="number">101</span>);</span><br><span class="line">    <span class="built_in">println!</span>(<span class="string">&quot;正确答案是:&#123;&#125;&quot;</span>, secret_number);</span><br><span class="line">    <span class="keyword">loop</span>&#123;</span><br><span class="line">        <span class="built_in">println!</span>(<span class="string">&quot;输入一个数字：&quot;</span>);</span><br><span class="line">        <span class="keyword">let</span> <span class="keyword">mut </span><span class="variable">guess</span> = <span class="type">String</span>::<span class="title function_ invoke__">new</span>();</span><br><span class="line">        io::<span class="title function_ invoke__">stdin</span>().<span class="title function_ invoke__">read_line</span>(&amp;<span class="keyword">mut</span> guess)</span><br><span class="line">        .<span class="title function_ invoke__">expect</span>(<span class="string">&quot;读取输入失败！&quot;</span>);</span><br><span class="line">        <span class="built_in">println!</span>(<span class="string">&quot;你输入的数字是：&#123;&#125;&quot;</span>, guess);</span><br><span class="line">        <span class="keyword">let</span> <span class="variable">guess</span>: <span class="type">i32</span> = <span class="keyword">match</span> guess.<span class="title function_ invoke__">trim</span>().<span class="title function_ invoke__">parse</span>()&#123;</span><br><span class="line">            <span class="title function_ invoke__">Ok</span>(num) =&gt; num,</span><br><span class="line">            <span class="title function_ invoke__">Err</span>(_) =&gt; &#123;</span><br><span class="line">                <span class="built_in">println!</span>(<span class="string">&quot;请输入一个正确的数字！&quot;</span>);</span><br><span class="line">                <span class="keyword">continue</span>;</span><br><span class="line">            &#125;</span><br><span class="line">        &#125;;</span><br><span class="line">        <span class="keyword">match</span> guess.<span class="title function_ invoke__">cmp</span>(&amp;secret_number)&#123;</span><br><span class="line">            Ordering::Less =&gt; &#123;</span><br><span class="line">                <span class="built_in">println!</span>(<span class="string">&quot;猜小啦&quot;</span>);</span><br><span class="line">                <span class="built_in">println!</span>(<span class="string">&quot;再猜一次：&quot;</span>);</span><br><span class="line">            &#125;,</span><br><span class="line">            Ordering::Greater =&gt; &#123;</span><br><span class="line">                <span class="built_in">println!</span>(<span class="string">&quot;猜大啦&quot;</span>);</span><br><span class="line">                <span class="built_in">println!</span>(<span class="string">&quot;再猜一次：&quot;</span>);</span><br><span class="line">            &#125;,</span><br><span class="line">            Ordering::Equal =&gt; &#123;</span><br><span class="line">                <span class="built_in">println!</span>(<span class="string">&quot;猜对啦&quot;</span>);</span><br><span class="line">                <span class="keyword">break</span>;</span><br><span class="line">            &#125;</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
-
-<p>修改后的代码是这样的，我们用 <code>match</code> 来处理 <code>parse()</code> 的返回值，之前也说过，<code>Ok</code> 会附带执行成功的值，所以 <code>Ok(num)</code> 表示，用 <code>num</code> 来匹配 <code>Ok</code> 里面带的成功的返回值，<code>=&gt;</code> 表示返回 <code>num</code> 值；<code>Err(_)</code> 就是表示，用 <code>_</code> 来匹配错误信息，因为不需要用，所以用 <code>_</code> 就完了，然后执行错误处理，输出+继续输入；值得一提的是这里好像说明了 Rust 的函数返回机制，好像不需要写 <code>return</code>，直接一个变量名就是返回了。</p>
-<p>OK，到目前为止，初步的编程尝试已经结束了，看了下后面的章节介绍，应该会是更结构化的东西。</p>
-]]></content>
-      <categories>
-        <category>编程/语言</category>
-      </categories>
-      <tags>
-        <tag>Rust</tag>
-      </tags>
-  </entry>
-  <entry>
     <title>【Rust 学习记录】9. 错误处理</title>
     <url>/2023/04/06/%E3%80%90Rust-%E5%AD%A6%E4%B9%A0%E8%AE%B0%E5%BD%95%E3%80%919-%E9%94%99%E8%AF%AF%E5%A4%84%E7%90%86/</url>
     <content><![CDATA[
@@ -1621,6 +1491,136 @@
 <li>一些基本的错误处理场景原则</li>
 </ol>
 <p>第10章开始就是 trait，泛型和生命周期了。</p>
+]]></content>
+      <categories>
+        <category>编程/语言</category>
+      </categories>
+      <tags>
+        <tag>Rust</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>【Rust学习记录】2. 猜数游戏——尝试代码编写</title>
+    <url>/2023/03/25/%E3%80%90Rust%E5%AD%A6%E4%B9%A0%E8%AE%B0%E5%BD%95%E3%80%912-%E7%8C%9C%E6%95%B0%E6%B8%B8%E6%88%8F%E2%80%94%E2%80%94%E5%B0%9D%E8%AF%95%E4%BB%A3%E7%A0%81%E7%BC%96%E5%86%99/</url>
+    <content><![CDATA[<h1 id="输入与输出的尝试"><a href="#输入与输出的尝试" class="headerlink" title="输入与输出的尝试"></a>输入与输出的尝试</h1><h2 id="创建项目"><a href="#创建项目" class="headerlink" title="创建项目"></a>创建项目</h2><div class="code-container" data-rel="Bash"><figure class="iseeu highlight bash"><table><tr><td class="code"><pre><span class="line">cargo new guess_game</span><br><span class="line"><span class="built_in">cd</span> .\guess_game\</span><br><span class="line">cargo run</span><br></pre></td></tr></table></figure></div>
+
+<p>就是之前介绍的，用 cargo 创建项目的步骤，run 成功了就表明没问题啦</p>
+<div class="code-container" data-rel="Rust"><figure class="iseeu highlight rust"><table><tr><td class="code"><pre><span class="line"><span class="keyword">use</span> std::io;</span><br><span class="line"></span><br><span class="line"><span class="keyword">fn</span> <span class="title function_">main</span>()&#123;</span><br><span class="line">    <span class="built_in">println!</span>(<span class="string">&quot;欢迎来玩猜数游戏！&quot;</span>);</span><br><span class="line">    <span class="built_in">println!</span>(<span class="string">&quot;输入一个数字：&quot;</span>);</span><br><span class="line">    <span class="keyword">let</span> <span class="keyword">mut </span><span class="variable">guess</span> = <span class="type">String</span>::<span class="title function_ invoke__">new</span>();</span><br><span class="line">    io::<span class="title function_ invoke__">stdin</span>().<span class="title function_ invoke__">read_line</span>(&amp;<span class="keyword">mut</span> guess).<span class="title function_ invoke__">expect</span>(<span class="string">&quot;读取输入失败！&quot;</span>);</span><br><span class="line">    <span class="built_in">println!</span>(<span class="string">&quot;你输入的数字是：&#123;&#125;&quot;</span>, guess);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
+
+<ul>
+<li><code>use</code>：就是 Rust 里的导入语句，这里的意思是导入 <code>std</code> 库里的 <code>io</code> 模块。</li>
+<li><code>let</code>：就是 Rust 里的定义语句，<code>let a = b;</code> 就是定义一个新的变量 <code>a</code>，值为 <code>b</code>。但值得一提的是，和其他所有程序都不一样，Rust 里直接定义的变量都是 <code>const</code> 常量，不可变！需要用 <code>mut</code> 关键词声明这个变量是可变的变量。</li>
+<li><code>string::new()</code>：没什么好说的，<code>new</code> 了一个 <code>String</code> 类型，是空白的字符串。</li>
+<li><code>io::stdin().read_line(&amp;mut guess)</code>：也就是调用 <code>io</code> 模块里的 <code>stdin</code> 实例的 <code>read_line</code> 函数，如果没有写 <code>use</code>，也可以用 <code>std::io::stdin</code> 表示，<code>&amp;</code> 和 C++ 里一样，是引用的概念，也就是说，定义了一个新的引用，和上面的 <code>guess</code> 指向同一个地址，用来接输入。</li>
+<li><code>.expect</code> 就是异常处理语句，在执行完 <code>read_line</code> 后，会返回一个 <code>Result</code> 类型的值，通常是一个枚举类型，<code>Ok</code> 和 <code>Err</code> 两个值，<code>Ok</code> 就是执行成功，并且附带代码产生的结果值，这里就是输入的字节数；<code>Err</code> 就是执行错误，附带错误原因。用 <code>expect</code> 就可以很方便地处理异常，而不用再写各 if-else。</li>
+<li>值得一提的是，不写 <code>expect</code> 的话，虽然能编译通过，但 Rust 会提示你有个地方没处理异常，就像这样：</li>
+</ul>
+<p><img  
+                     lazyload
+                     src="/images/loading.svg"
+                     data-src="/images/Snipaste_2023-03-24_23-15-36.jpg"
+                      alt="img"
+                ></p>
+<p>（听说有人不喜欢写异常处理是吧）</p>
+<p>最后一句，就是标准的格式化花括号占位输出，没什么好说的。</p>
+<h1 id="引入第三方包的尝试"><a href="#引入第三方包的尝试" class="headerlink" title="引入第三方包的尝试"></a>引入第三方包的尝试</h1><h2 id="声明依赖"><a href="#声明依赖" class="headerlink" title="声明依赖"></a>声明依赖</h2><p>一般语言的标准库都有生成随机数的函数，但rust没有。所以我们需要引入rust官方提供的一个随机数包——rand</p>
+<p>打开Cargo.toml文件，在dependencies后面添加rand包。</p>
+<div class="code-container" data-rel="Toml"><figure class="iseeu highlight toml"><table><tr><td class="code"><pre><span class="line"><span class="section">[package]</span></span><br><span class="line"><span class="attr">name</span> = <span class="string">&quot;guess_game&quot;</span></span><br><span class="line"><span class="attr">version</span> = <span class="string">&quot;0.1.0&quot;</span></span><br><span class="line"><span class="attr">edition</span> = <span class="string">&quot;2021&quot;</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html</span></span><br><span class="line"></span><br><span class="line"><span class="section">[dependencies]</span></span><br><span class="line"><span class="attr">rand</span> = <span class="string">&quot;0.3.14&quot;</span></span><br></pre></td></tr></table></figure></div>
+
+<p>0.3.14版本就是版本号。</p>
+<p>然后再build一次项目，cargo就会自动帮你搜索包以及对应的并下载了，包的信息一般是从 crates.io 获取</p>
+<h2 id="cargo-lock和cargo-update"><a href="#cargo-lock和cargo-update" class="headerlink" title="cargo.lock和cargo update"></a>cargo.lock和cargo update</h2><p>cargo引入了一个独特的机制来保证依赖的版本问题，让所有人在构建这个项目的时候都得到相同的结果。你第一次构建项目的时候，cargo就会遍历我们声明的依赖以及版本号，把它写到 lock 文件里，后面再构建的时候，就会都使用这个版本的依赖了，除非手动升级到其他版本。</p>
+<p>如果实在想升级，使用 <code>cargo update</code> 命令就会无视 lock 强行升级依赖</p>
+<h1 id="使用match进行分支控制的尝试"><a href="#使用match进行分支控制的尝试" class="headerlink" title="使用match进行分支控制的尝试"></a>使用match进行分支控制的尝试</h1><p>rust提供了match语法来进行更简洁的分支控制。</p>
+<div class="code-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="code"><pre><span class="line">use std::io;</span><br><span class="line">use std::cmp::Ordering;</span><br><span class="line">use rand::Rng;</span><br><span class="line">fn main()&#123;</span><br><span class="line">    println!(&quot;欢迎来玩猜数游戏！&quot;);</span><br><span class="line">    let secret_number = rand::thread_rng().gen_range(1, 101);</span><br><span class="line">    println!(&quot;正确答案是:&#123;&#125;&quot;, secret_number);</span><br><span class="line">    println!(&quot;输入一个数字：&quot;);</span><br><span class="line">    let mut guess = String::new();</span><br><span class="line">    io::stdin().read_line(&amp;mut guess)</span><br><span class="line">        .expect(&quot;读取输入失败！&quot;);</span><br><span class="line">    let guess: i32 = guess.trim().parse()</span><br><span class="line">        .expect(&quot;请输入正确的数字！&quot;);</span><br><span class="line">    match guess.cmp(&amp;secret_number)&#123;</span><br><span class="line">        Ordering::Less =&gt; &#123;</span><br><span class="line">            println!(&quot;猜小啦&quot;);</span><br><span class="line">            println!(&quot;再猜一次：&quot;);</span><br><span class="line">        &#125;,</span><br><span class="line">        Ordering::Greater =&gt; println!(&quot;猜大啦&quot;),</span><br><span class="line">        Ordering::Equal =&gt; println!(&quot;猜对啦&quot;),</span><br><span class="line">        Other =&gt; println!(&quot;猜错啦&quot;),</span><br><span class="line">    &#125;</span><br><span class="line">    println!(&quot;你输入的数字是：&#123;&#125;&quot;, guess);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
+
+<p>这段代码里：</p>
+<ul>
+<li><code>use</code> 了一个 <code>Ordering</code> 的模块，这个模块提供了顺序对应的枚举类型，也就是 <code>Less</code>, <code>Greater</code>, <code>Equal</code></li>
+<li><code>trim().parse()</code> 语句用来作类型转换，因为 <code>gen_range</code> 生成的 <code>secret_number</code> 是 <code>i32</code> 类型，无法直接与输入的字符串进行比较，所以作了一个类型转换；其中 <code>trim()</code> 就是去掉首尾多余的字符，空格换行什么的；<code>parse()</code> 是用于将字符串解析为对应数值类型的方法，同样也会抛出 <code>Result</code> 可以用于异常处理</li>
+<li><code>match guess.cmp</code>：就是通过 <code>match</code> 语法进行分支控制，把 <code>guess.cmp()</code> 的结果丢到下面去匹配，匹配到什么就执行什么的语句。其中 <code>cmp</code> 返回的就是 <code>Ordering</code> 这个枚举类型。实际中，这个枚举类型也可以自己定义，方便自己的分支控制。传统的 <code>if-else</code> 也能实现这个逻辑就是。</li>
+</ul>
+<p>PS：大概了解了一下 <code>if-else</code> 和 <code>match</code> 的比较，两者应该主要是在可读性上的区别比较明显。</p>
+<p>在可读性上，<code>if-else</code> 只接受 bool 值的二类判断。当有复杂条件的时候，就需要多层嵌套 <code>if-else</code> 比较难看。相对的，<code>match</code> 可以自定义枚举类型，在多类判断的时候，写法也更简洁，可读性更佳。当然，二类判断当属 <code>if-else</code>。</p>
+<p>在性能上，当匹配的模式非常多的情况下，<code>match</code> 可以在编译时就完成判断，而 <code>if-else</code> 是在运行的时候完成判断，在极端的情况下，<code>match</code> 的性能会更佳（但我觉得在这种语句上纠性能的意义并不大）。</p>
+<p>另外了解了一下，<code>if-else</code> 的语法和 C++ 基本一样，就不另外写了，书上目前也没有介绍 <code>if-else</code>。</p>
+<h1 id="循环的尝试"><a href="#循环的尝试" class="headerlink" title="循环的尝试"></a>循环的尝试</h1><div class="code-container" data-rel="Rust"><figure class="iseeu highlight rust"><table><tr><td class="code"><pre><span class="line"><span class="keyword">use</span> std::io;</span><br><span class="line"><span class="keyword">use</span> std::cmp::Ordering;</span><br><span class="line"><span class="keyword">use</span> rand::Rng;</span><br><span class="line"><span class="keyword">fn</span> <span class="title function_">main</span>()&#123;</span><br><span class="line">    <span class="built_in">println!</span>(<span class="string">&quot;欢迎来玩猜数游戏！&quot;</span>);</span><br><span class="line">    <span class="keyword">let</span> <span class="variable">secret_number</span> = rand::<span class="title function_ invoke__">thread_rng</span>().<span class="title function_ invoke__">gen_range</span>(<span class="number">1</span>, <span class="number">101</span>);</span><br><span class="line">    <span class="built_in">println!</span>(<span class="string">&quot;正确答案是:&#123;&#125;&quot;</span>, secret_number);</span><br><span class="line">    <span class="keyword">loop</span>&#123;</span><br><span class="line">        <span class="built_in">println!</span>(<span class="string">&quot;输入一个数字：&quot;</span>);</span><br><span class="line">        <span class="keyword">let</span> <span class="keyword">mut </span><span class="variable">guess</span> = <span class="type">String</span>::<span class="title function_ invoke__">new</span>();</span><br><span class="line">        io::<span class="title function_ invoke__">stdin</span>().<span class="title function_ invoke__">read_line</span>(&amp;<span class="keyword">mut</span> guess)</span><br><span class="line">        .<span class="title function_ invoke__">expect</span>(<span class="string">&quot;读取输入失败！&quot;</span>);</span><br><span class="line">        <span class="built_in">println!</span>(<span class="string">&quot;你输入的数字是：&#123;&#125;&quot;</span>, guess);</span><br><span class="line">        <span class="keyword">let</span> <span class="variable">guess</span>: <span class="type">i32</span> = guess.<span class="title function_ invoke__">trim</span>().<span class="title function_ invoke__">parse</span>()</span><br><span class="line">            .<span class="title function_ invoke__">expect</span>(<span class="string">&quot;请输入正确的数字！&quot;</span>);</span><br><span class="line">        <span class="keyword">match</span> guess.<span class="title function_ invoke__">cmp</span>(&amp;secret_number)&#123;</span><br><span class="line">            Ordering::Less =&gt; &#123;</span><br><span class="line">                <span class="built_in">println!</span>(<span class="string">&quot;猜小啦&quot;</span>);</span><br><span class="line">                <span class="built_in">println!</span>(<span class="string">&quot;再猜一次：&quot;</span>);</span><br><span class="line">            &#125;,</span><br><span class="line">            Ordering::Greater =&gt; &#123;</span><br><span class="line">                <span class="built_in">println!</span>(<span class="string">&quot;猜大啦&quot;</span>);</span><br><span class="line">                <span class="built_in">println!</span>(<span class="string">&quot;再猜一次：&quot;</span>);</span><br><span class="line">            &#125;,</span><br><span class="line">            Ordering::Equal =&gt; &#123;</span><br><span class="line">                <span class="built_in">println!</span>(<span class="string">&quot;猜对啦&quot;</span>);</span><br><span class="line">                <span class="keyword">break</span>;</span><br><span class="line">            &#125;</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
+
+<p>想使用一个 <code>while True</code> 循环也很简单，在 Rust 里就是一个 <code>loop</code> 语法，外带 <code>break</code>，没什么多说的，这里注意定义 <code>guess</code> 变量要在 <code>loop</code> 里，不然 <code>read_line</code> 会不断的在 <code>guess</code> 后面添加字符，就会导致无法转换成数字，报错退出。</p>
+<p>那么在循环里有一个问题就很明显了，那就是 <code>expect</code> 语句不是我所理解常规的 <code>try-catch</code> 异常处理语句，它并没有捕获+后处理的步骤，所以它是会导致程序报错退出的。</p>
+<p>那怎么来进行异常处理呢？之前也说过，<code>Result</code> 返回的是一个枚举类型 <code>Ok</code> 和 <code>Err</code>。那不就是，用 <code>match</code> 来处理就完了嘛？~</p>
+<div class="code-container" data-rel="Rust"><figure class="iseeu highlight rust"><table><tr><td class="code"><pre><span class="line"><span class="keyword">use</span> std::io;</span><br><span class="line"><span class="keyword">use</span> std::cmp::Ordering;</span><br><span class="line"><span class="keyword">use</span> rand::Rng;</span><br><span class="line"><span class="keyword">fn</span> <span class="title function_">main</span>()&#123;</span><br><span class="line">    <span class="built_in">println!</span>(<span class="string">&quot;欢迎来玩猜数游戏！&quot;</span>);</span><br><span class="line">    <span class="keyword">let</span> <span class="variable">secret_number</span> = rand::<span class="title function_ invoke__">thread_rng</span>().<span class="title function_ invoke__">gen_range</span>(<span class="number">1</span>, <span class="number">101</span>);</span><br><span class="line">    <span class="built_in">println!</span>(<span class="string">&quot;正确答案是:&#123;&#125;&quot;</span>, secret_number);</span><br><span class="line">    <span class="keyword">loop</span>&#123;</span><br><span class="line">        <span class="built_in">println!</span>(<span class="string">&quot;输入一个数字：&quot;</span>);</span><br><span class="line">        <span class="keyword">let</span> <span class="keyword">mut </span><span class="variable">guess</span> = <span class="type">String</span>::<span class="title function_ invoke__">new</span>();</span><br><span class="line">        io::<span class="title function_ invoke__">stdin</span>().<span class="title function_ invoke__">read_line</span>(&amp;<span class="keyword">mut</span> guess)</span><br><span class="line">        .<span class="title function_ invoke__">expect</span>(<span class="string">&quot;读取输入失败！&quot;</span>);</span><br><span class="line">        <span class="built_in">println!</span>(<span class="string">&quot;你输入的数字是：&#123;&#125;&quot;</span>, guess);</span><br><span class="line">        <span class="keyword">let</span> <span class="variable">guess</span>: <span class="type">i32</span> = <span class="keyword">match</span> guess.<span class="title function_ invoke__">trim</span>().<span class="title function_ invoke__">parse</span>()&#123;</span><br><span class="line">            <span class="title function_ invoke__">Ok</span>(num) =&gt; num,</span><br><span class="line">            <span class="title function_ invoke__">Err</span>(_) =&gt; &#123;</span><br><span class="line">                <span class="built_in">println!</span>(<span class="string">&quot;请输入一个正确的数字！&quot;</span>);</span><br><span class="line">                <span class="keyword">continue</span>;</span><br><span class="line">            &#125;</span><br><span class="line">        &#125;;</span><br><span class="line">        <span class="keyword">match</span> guess.<span class="title function_ invoke__">cmp</span>(&amp;secret_number)&#123;</span><br><span class="line">            Ordering::Less =&gt; &#123;</span><br><span class="line">                <span class="built_in">println!</span>(<span class="string">&quot;猜小啦&quot;</span>);</span><br><span class="line">                <span class="built_in">println!</span>(<span class="string">&quot;再猜一次：&quot;</span>);</span><br><span class="line">            &#125;,</span><br><span class="line">            Ordering::Greater =&gt; &#123;</span><br><span class="line">                <span class="built_in">println!</span>(<span class="string">&quot;猜大啦&quot;</span>);</span><br><span class="line">                <span class="built_in">println!</span>(<span class="string">&quot;再猜一次：&quot;</span>);</span><br><span class="line">            &#125;,</span><br><span class="line">            Ordering::Equal =&gt; &#123;</span><br><span class="line">                <span class="built_in">println!</span>(<span class="string">&quot;猜对啦&quot;</span>);</span><br><span class="line">                <span class="keyword">break</span>;</span><br><span class="line">            &#125;</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
+
+<p>修改后的代码是这样的，我们用 <code>match</code> 来处理 <code>parse()</code> 的返回值，之前也说过，<code>Ok</code> 会附带执行成功的值，所以 <code>Ok(num)</code> 表示，用 <code>num</code> 来匹配 <code>Ok</code> 里面带的成功的返回值，<code>=&gt;</code> 表示返回 <code>num</code> 值；<code>Err(_)</code> 就是表示，用 <code>_</code> 来匹配错误信息，因为不需要用，所以用 <code>_</code> 就完了，然后执行错误处理，输出+继续输入；值得一提的是这里好像说明了 Rust 的函数返回机制，好像不需要写 <code>return</code>，直接一个变量名就是返回了。</p>
+<p>OK，到目前为止，初步的编程尝试已经结束了，看了下后面的章节介绍，应该会是更结构化的东西。</p>
+]]></content>
+      <categories>
+        <category>编程/语言</category>
+      </categories>
+      <tags>
+        <tag>Rust</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>【Rust学习记录】1. 开发环境搭建</title>
+    <url>/2023/03/24/%E3%80%90Rust%E5%AD%A6%E4%B9%A0%E8%AE%B0%E5%BD%95%E3%80%911-%E5%BC%80%E5%8F%91%E7%8E%AF%E5%A2%83%E6%90%AD%E5%BB%BA/</url>
+    <content><![CDATA[
+  <div class="note p-4 mb-4 rounded-small info">
+    <p>本系列参考书目：《RUST权威指南》</p>
+
+  </div>
+
+<p>久闻rust大名，趁着研究生还是学习生涯，抽空出来试试这个所谓的既高效，又安全的语言</p>
+<h1 id="环境安装与搭建"><a href="#环境安装与搭建" class="headerlink" title="环境安装与搭建"></a>环境安装与搭建</h1><h2 id="Rust安装"><a href="#Rust安装" class="headerlink" title="Rust安装"></a>Rust安装</h2><p>windows的安装很傻瓜式，只要进入<a class="link"   href="https://www.rust-lang.org/learn/get-started" >官网<i class="fa-solid fa-arrow-up-right ml-[0.2em] font-light align-text-top text-[0.7em] link-icon"></i></a>，下载最新版本的安装包，按照进行安装即可。期间可能会提示让你安装VS的工具，照着安装即可。</p>
+<p>安装完成后，就可以通过 <code>rustc --version</code> 来测试是否安装成功了。</p>
+<p>同时，安装后rust也会在本地生成一份文档，可以通过 <code>rustup doc</code> 用浏览器打开。</p>
+<h1 id="Hello-World"><a href="#Hello-World" class="headerlink" title="Hello World!"></a>Hello World!</h1><p>接下来进行一个开启一门全新语言的必备仪式，hello world!</p>
+<ol>
+<li>新建一个文件命名为 <code>hello.rs</code> rs就是rust代码文件的后缀</li>
+<li>编写代码</li>
+</ol>
+<div class="code-container" data-rel="Cpp"><figure class="iseeu highlight cpp"><table><tr><td class="code"><pre><span class="line"><span class="function">fn <span class="title">main</span><span class="params">()</span></span>&#123;</span><br><span class="line">    println!(<span class="string">&quot;Hello, world!&quot;</span>); </span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
+
+<ol start="3">
+<li>编译程序 <code>rustc hello.rs</code> ，接下来就会看到文件夹内生成了一个可执行文件 hello.exe，执行它，就能看到你的 hello world啦~跨过这一步，我们就是一名rust开发者了</li>
+</ol>
+<p>稍微了解一下这个函数</p>
+<p>首先fn就是function的缩写，用来定义函数；其他语法都和c++差不多，唯独不一样的就是函数println后带着一个感叹号，这似乎是rust里的宏机制，这个后面再学学吧。</p>
+<h1 id="Cargo的安装与使用"><a href="#Cargo的安装与使用" class="headerlink" title="Cargo的安装与使用"></a>Cargo的安装与使用</h1><h2 id="创建项目"><a href="#创建项目" class="headerlink" title="创建项目"></a>创建项目</h2><p>书上写的是，cargo是构建+包管理的工具，或许可以理解成，ubuntu里的apt+cmake的组合？</p>
+<p>在安装rust时就已经同步安装了cargo，我们可以通过 <code>cargo --version</code> 来检查是否正确安装</p>
+<div class="code-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="code"><pre><span class="line">cargo new hello_cargo</span><br></pre></td></tr></table></figure></div>
+
+<p>这一个命令会使用cargo来创建新的项目架构，我们进入创建的hello_cargo文件夹，可以看到cargo帮我们初始化了一个Cargo.toml文件，一个src目录，放置了一个main.rs的源文件，还有一个.gitignore文件，说明它还帮我们配置了git版本管理</p>
+<p>关于toml文件，我们可以用编辑器打开它</p>
+<div class="code-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="code"><pre><span class="line">[package]</span><br><span class="line">name = &quot;hello_cargo&quot;</span><br><span class="line">version = &quot;0.1.0&quot;</span><br><span class="line">edition = &quot;2021&quot;</span><br><span class="line"></span><br><span class="line"># See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html</span><br><span class="line"></span><br><span class="line">[dependencies]</span><br></pre></td></tr></table></figure></div>
+
+<p>我们可以看到这么些东西，上面自然就是你所创建的代码包的相关信息，而dependencies就是我们代码需要依赖的第三方包信息，不过我们一个hello world不需要什么，所以现在这里是空的。</p>
+<p>也就是说，这是个rs项目的标准配置文件</p>
+<p>我们再打开main.rs，就会发现cargo已经帮我们写好了一个hello world程序~</p>
+<h2 id="编译、运行与发布"><a href="#编译、运行与发布" class="headerlink" title="编译、运行与发布"></a>编译、运行与发布</h2><p>之前用rustc来编译单个文件，现在我们来使用cargo构建整个项目，首先回到根目录 hello_cargo，输入命令</p>
+<div class="code-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="code"><pre><span class="line">cargo build</span><br></pre></td></tr></table></figure></div>
+
+<p><img  
+                     lazyload
+                     src="/images/loading.svg"
+                     data-src="/images/Snipaste_2023-03-24_21-59-03.jpg"
+                      alt="img"
+                ></p>
+<p>编译完成如上图，我们就可以发现，目录里生成了一个target文件夹，在<code> ./targe/debug</code> 目录下，就可以找到我们编译成功的可执行文件了，同样运行它，就能看到 hello world了</p>
+<p>PS：如果想要编译+运行，可以使用 <code>cargo run</code> 命令（若源代码未发生改变，cargo run不会重新进行构建，而是直接运行）</p>
+<p>另外，cargo还有一个比较好用的命令 <code>cargo check</code> ，这个命令可以让你在编译大型程序的时候，免去漫长的编译等待，快速的知道代码能否完成编译（真的这么神吗，cmake编译一个小时opencv最后环境出错编译失败的我如此问道）</p>
+<hr>
+<p>如果你已经准备好发布你的程序了，那么就可以用 <code>cargo build --release</code> 来编译代码，它会在 <code>target/release</code> 的目录下生成可执行文件，和debug不同的是，它会花更长的编译时间来优化你的代码，使代码有更好的运行性能。也就是说，普通的build侧重于快速的编译，让你调试程序，release build侧重于可执行文件的运行性能，用来交付给用户。</p>
+<p><img  
+                     lazyload
+                     src="/images/loading.svg"
+                     data-src="/images/Snipaste_2023-03-24_22-09-48.jpg"
+                      alt="img"
+                ></p>
+<p>可以看到编译后有一个optimized的标签，表示是优化过的target，同时也少了debug info。（但编译速度更快了，应该就是我之前debug编译过一次，基于那个的基础上，又花了0.84s进行优化）</p>
+<p>PS：同理，你想编译完直接测试，可以用 <code>cargo run --release</code></p>
+<p>这么看来，cargo应该就是rust构建项目的核心工具了。</p>
+<p>到此为止，第一章结束。</p>
 ]]></content>
       <categories>
         <category>编程/语言</category>
